@@ -1,10 +1,11 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
-// CHIP-8 machine state. Kept free of OS-specific code so the core can be
-// ported to a microcontroller later (see ../../firmware).
+// CHIP-8 machine state. The core does no I/O (no files, no stdio) so the same
+// code runs on a desktop and on a microcontroller (see ../../firmware).
 class Chip8 {
 public:
     static constexpr int kMemorySize = 4096;
@@ -14,12 +15,16 @@ public:
 
     Chip8();
 
-    // Load a ROM image into memory at 0x200. Returns false on failure.
-    bool loadRom(const char* path);
+    // Copy a ROM image into memory at 0x200. Returns false if it doesn't fit.
+    bool loadRom(const uint8_t* data, size_t size);
 
     // Run one fetch / decode / execute step.
-    // Returns false if the opcode is not implemented yet.
+    // Returns false if the machine can't continue (unimplemented opcode or
+    // program counter out of range); lastOpcode and lastPc say where.
     bool cycle();
+
+    // Call at 60 Hz: counts the delay and sound timers down.
+    void tickTimers();
 
     std::array<uint8_t, kMemorySize> memory{};
     std::array<uint8_t, 16> V{};  // general registers V0..VF (VF = flag)
@@ -31,4 +36,7 @@ public:
     uint8_t soundTimer = 0;
     std::array<uint8_t, kDisplayWidth * kDisplayHeight> display{};
     std::array<uint8_t, 16> keypad{};
+
+    uint16_t lastOpcode = 0;  // most recently fetched opcode
+    uint16_t lastPc = 0;      // address that opcode was fetched from
 };

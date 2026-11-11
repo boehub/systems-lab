@@ -1,31 +1,32 @@
 #include "chip8.h"
 
-#include <cstdio>
-#include <fstream>
-#include <iterator>
-#include <vector>
-
 Chip8::Chip8() = default;
 
-bool Chip8::loadRom(const char* path) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file) {
+bool Chip8::loadRom(const uint8_t* data, size_t size) {
+    if (size > memory.size() - kStartAddress) {
         return false;
     }
-    std::vector<uint8_t> rom((std::istreambuf_iterator<char>(file)),
-                             std::istreambuf_iterator<char>());
-    if (rom.size() > memory.size() - kStartAddress) {
-        return false;
-    }
-    for (size_t i = 0; i < rom.size(); ++i) {
-        memory[kStartAddress + i] = rom[i];
+    for (size_t i = 0; i < size; ++i) {
+        memory[kStartAddress + i] = data[i];
     }
     return true;
 }
 
+void Chip8::tickTimers() {
+    if (delayTimer > 0) --delayTimer;
+    if (soundTimer > 0) --soundTimer;
+}
+
 bool Chip8::cycle() {
-    // Fetch: opcodes are 2 bytes, big-endian.
+    // An opcode is 2 bytes, so the program counter must leave room for both.
+    if (pc > kMemorySize - 2) {
+        return false;
+    }
+
+    // Fetch: big-endian.
+    lastPc = pc;
     const uint16_t opcode = (memory[pc] << 8) | memory[pc + 1];
+    lastOpcode = opcode;
     pc += 2;
 
     // Decode the common fields.
@@ -35,7 +36,7 @@ bool Chip8::cycle() {
     const uint8_t nn = opcode & 0x00FF;
     const uint16_t nnn = opcode & 0x0FFF;
 
-    // Execute. Only a few opcodes so far; the rest come next.
+    // Execute. Only some opcodes so far; the rest come next.
     switch (opcode & 0xF000) {
         case 0x0000:
             if (opcode == 0x00E0) {  // 00E0: clear the screen
@@ -61,6 +62,7 @@ bool Chip8::cycle() {
             V[0xF] = 0;
             for (int row = 0; row < n; ++row) {
                 if (yPos + row >= kDisplayHeight) break;  // clip at bottom
+                if (I + row >= kMemorySize) break;        // don't read past RAM
                 const uint8_t spriteByte = memory[I + row];
                 for (int col = 0; col < 8; ++col) {
                     if (xPos + col >= kDisplayWidth) break;  // clip at right
@@ -78,7 +80,5 @@ bool Chip8::cycle() {
             break;
     }
 
-    std::fprintf(stderr, "Unimplemented opcode 0x%04X at 0x%03X\n", opcode,
-                 pc - 2);
-    return false;
+    return false;  // unimplemented opcode
 }

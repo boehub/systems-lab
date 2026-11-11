@@ -1,4 +1,8 @@
+#include <cstdint>
 #include <cstdio>
+#include <fstream>
+#include <iterator>
+#include <vector>
 
 #include "chip8.h"
 
@@ -20,16 +24,29 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    std::ifstream file(argv[1], std::ios::binary);
+    if (!file) {
+        std::fprintf(stderr, "could not open ROM: %s\n", argv[1]);
+        return 1;
+    }
+    const std::vector<uint8_t> rom((std::istreambuf_iterator<char>(file)),
+                                   std::istreambuf_iterator<char>());
+
     Chip8 chip8;
-    if (!chip8.loadRom(argv[1])) {
-        std::fprintf(stderr, "could not load ROM: %s\n", argv[1]);
+    if (!chip8.loadRom(rom.data(), rom.size())) {
+        std::fprintf(stderr, "ROM too large: %s\n", argv[1]);
         return 1;
     }
 
     // Placeholder run loop: step until we hit an opcode we don't support yet.
-    // Display output, input, and timing come later.
+    // Real-time timing and input come later.
     int cycles = 0;
-    while (cycles < 1000 && chip8.cycle()) {
+    while (cycles < 1000) {
+        if (!chip8.cycle()) {
+            std::fprintf(stderr, "Unimplemented opcode 0x%04X at 0x%03X\n",
+                         chip8.lastOpcode, chip8.lastPc);
+            break;
+        }
         ++cycles;
     }
     printDisplay(chip8);
