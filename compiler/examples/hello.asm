@@ -1,4 +1,6 @@
-; Sketch of the planned assembly syntax (not assembled yet).
+; Sketch for the draft custom instruction set in ../docs/instruction-set.md.
+; This is NOT CHIP-8 and chip8asm.py can't assemble it. See zero.asm for a
+; program that runs today.
 ; Computes 2 + 3 * 4 and prints it.
 
     LDI  R0, 3

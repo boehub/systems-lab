@@ -1,5 +1,7 @@
 # Instruction Set (DRAFT)
 
+> **Not the current target.** The assembler in `../chip8asm.py` targets CHIP-8 so programs run in the emulator today. This is an early draft of a custom instruction set, kept for a possible later step.
+
 A small instruction set for the machine this toolchain targets. Everything here is a first guess and will change as the emulator and compiler get built.
 
 ## Machine model

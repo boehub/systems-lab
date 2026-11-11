@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+*.ch8
+!examples/*.ch8
