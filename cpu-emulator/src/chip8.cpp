@@ -30,6 +30,8 @@ bool Chip8::cycle() {
 
     // Decode the common fields.
     const uint8_t x = (opcode & 0x0F00) >> 8;
+    const uint8_t y = (opcode & 0x00F0) >> 4;
+    const uint8_t n = opcode & 0x000F;
     const uint8_t nn = opcode & 0x00FF;
     const uint16_t nnn = opcode & 0x0FFF;
 
@@ -53,6 +55,25 @@ bool Chip8::cycle() {
         case 0xA000:  // ANNN: I = NNN
             I = nnn;
             return true;
+        case 0xD000: {  // DXYN: draw N-row sprite from memory[I] at (VX, VY)
+            const uint8_t xPos = V[x] % kDisplayWidth;
+            const uint8_t yPos = V[y] % kDisplayHeight;
+            V[0xF] = 0;
+            for (int row = 0; row < n; ++row) {
+                if (yPos + row >= kDisplayHeight) break;  // clip at bottom
+                const uint8_t spriteByte = memory[I + row];
+                for (int col = 0; col < 8; ++col) {
+                    if (xPos + col >= kDisplayWidth) break;  // clip at right
+                    if (spriteByte & (0x80 >> col)) {
+                        uint8_t& pixel =
+                            display[(yPos + row) * kDisplayWidth + (xPos + col)];
+                        if (pixel) V[0xF] = 1;  // a lit pixel got turned off
+                        pixel ^= 1;
+                    }
+                }
+            }
+            return true;
+        }
         default:
             break;
     }
