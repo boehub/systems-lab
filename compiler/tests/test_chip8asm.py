@@ -152,6 +152,17 @@ class ExampleProgramTests(unittest.TestCase):
             self.assertEqual(rom, f.read())
 
 
+    def test_zeros_example_assembles_to_known_bytes(self):
+        # Verified by running it: three glyphs at x = 0, 8, 16.
+        with open(os.path.join(ROOT, "examples", "zeros.asm"), encoding="utf-8") as f:
+            rom = assemble(f.read())
+        expected = bytes.fromhex(
+            "6000 6100 6203 2212 7008 72ff 3200 1206 1210 a218 d015 00ee"
+            " f0 90 90 90 f0"
+        )
+        self.assertEqual(rom, expected)
+
+
 class CHeaderTests(unittest.TestCase):
     def test_header_contains_bytes_and_size(self):
         text = to_c_header(bytes([0xA2, 0x06, 0xD0]), "demo", "x.asm")

@@ -33,6 +33,8 @@ python3 chip8asm.py examples/zero.asm --format c -o rom.h         # C array
 ../cpu-emulator/chip8 zero.ch8                                    # run it
 ```
 
+`examples/zeros.asm` is a slightly bigger program: a subroutine and a loop that draw three glyphs in a row. It runs in the emulator as it stands.
+
 ### Tests
 
 ```
