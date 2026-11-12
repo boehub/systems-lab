@@ -19,8 +19,9 @@ public:
     bool loadRom(const uint8_t* data, size_t size);
 
     // Run one fetch / decode / execute step.
-    // Returns false if the machine can't continue (unimplemented opcode or
-    // program counter out of range); lastOpcode and lastPc say where.
+    // Returns false if the machine can't continue (unimplemented opcode,
+    // stack overflow or underflow, or program counter out of range);
+    // lastOpcode and lastPc say where.
     bool cycle();
 
     // Call at 60 Hz: counts the delay and sound timers down.

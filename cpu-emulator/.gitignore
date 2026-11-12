@@ -1,4 +1,5 @@
 chip8
+test_core
 *.o
 *.exe
 build/

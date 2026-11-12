@@ -43,15 +43,39 @@ bool Chip8::cycle() {
                 display.fill(0);
                 return true;
             }
+            if (opcode == 0x00EE) {  // 00EE: return from subroutine
+                if (sp == 0) return false;  // nothing to return to
+                pc = stack[--sp];
+                return true;
+            }
             break;
         case 0x1000:  // 1NNN: jump to NNN
             pc = nnn;
+            return true;
+        case 0x2000:  // 2NNN: call subroutine at NNN
+            if (sp >= stack.size()) return false;  // stack full (16 levels)
+            stack[sp++] = pc;  // pc already points at the next instruction
+            pc = nnn;
+            return true;
+        case 0x3000:  // 3XNN: skip next instruction if VX == NN
+            if (V[x] == nn) pc += 2;
+            return true;
+        case 0x4000:  // 4XNN: skip next instruction if VX != NN
+            if (V[x] != nn) pc += 2;
+            return true;
+        case 0x5000:  // 5XY0: skip next instruction if VX == VY
+            if (n != 0) break;  // low nibble must be 0
+            if (V[x] == V[y]) pc += 2;
             return true;
         case 0x6000:  // 6XNN: VX = NN
             V[x] = nn;
             return true;
         case 0x7000:  // 7XNN: VX += NN (no carry flag)
             V[x] += nn;
+            return true;
+        case 0x9000:  // 9XY0: skip next instruction if VX != VY
+            if (n != 0) break;  // low nibble must be 0
+            if (V[x] != V[y]) pc += 2;
             return true;
         case 0xA000:  // ANNN: I = NNN
             I = nnn;

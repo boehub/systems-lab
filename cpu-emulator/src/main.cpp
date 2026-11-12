@@ -43,7 +43,9 @@ int main(int argc, char** argv) {
     int cycles = 0;
     while (cycles < 1000) {
         if (!chip8.cycle()) {
-            std::fprintf(stderr, "Unimplemented opcode 0x%04X at 0x%03X\n",
+            std::fprintf(stderr,
+                         "Can't execute opcode 0x%04X at 0x%03X (not "
+                         "implemented, or a stack error)\n",
                          chip8.lastOpcode, chip8.lastPc);
             break;
         }
