@@ -10,7 +10,7 @@ A collection of systems-level projects built from scratch: CPU emulators, compil
 
 | Project | Description | Status |
 |---------|-------------|--------|
-| [CHIP-8 Emulator](cpu-emulator/) | C++ emulator for the CHIP-8 virtual machine. The core has no I/O, so it ports to microcontrollers | In progress (6 opcodes, sprite drawing works) |
+| [CHIP-8 Emulator](cpu-emulator/) | C++ emulator for the CHIP-8 virtual machine. The core has no I/O, so it ports to microcontrollers | In progress (12 opcodes: calls, loops, and conditionals work) |
 | [Assembler / Compiler](compiler/) | Python assembler for CHIP-8 with labels, data directives, and tests. A small language comes next | In progress (assembler works) |
 | [Firmware](firmware/) | Portable run loop and hardware interface for running the emulator on a microcontroller | In progress (runs on desktop, board port next) |
 
