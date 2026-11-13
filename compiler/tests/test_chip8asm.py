@@ -163,6 +163,17 @@ class ExampleProgramTests(unittest.TestCase):
         self.assertEqual(rom, expected)
 
 
+    def test_sum_example_assembles_to_known_bytes(self):
+        # Verified by running it: draws "55" using the built-in font.
+        with open(os.path.join(ROOT, "examples", "sum.asm"), encoding="utf-8") as f:
+            rom = assemble(f.read())
+        expected = bytes.fromhex(
+            "630A 6400 8434 73FF 3300 1204 A222 F433 F265 6600 6700"
+            " F129 D675 7605 F229 D675 1220 000000"
+        )
+        self.assertEqual(rom, expected)
+
+
 class CHeaderTests(unittest.TestCase):
     def test_header_contains_bytes_and_size(self):
         text = to_c_header(bytes([0xA2, 0x06, 0xD0]), "demo", "x.asm")

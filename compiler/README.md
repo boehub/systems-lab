@@ -33,7 +33,7 @@ python3 chip8asm.py examples/zero.asm --format c -o rom.h         # C array
 ../cpu-emulator/chip8 zero.ch8                                    # run it
 ```
 
-`examples/zeros.asm` is a slightly bigger program: a subroutine and a loop that draw three glyphs in a row. It runs in the emulator as it stands.
+Two bigger programs run in the emulator as they stand: `examples/zeros.asm` (a subroutine and a loop that draw three glyphs in a row) and `examples/sum.asm` (adds up 1 to 10 and draws the answer, 55, using the built-in font).
 
 ### Tests
 
@@ -43,11 +43,11 @@ python3 -m unittest discover -s tests
 
 The tests check the encoding of every instruction, labels, directives, each kind of error, and that `zero.asm` assembles to exactly the same bytes as the hand-made ROM in `../cpu-emulator/roms/`.
 
-Note that the emulator doesn't implement every opcode yet, so the assembler can produce programs the emulator can't fully run.
+The emulator runs every instruction the assembler can produce except `SYS` (`0NNN`), which it deliberately stops on.
 
 ## Language (planned)
 
-A small language with variables, math, and loops that compiles to this assembly. `docs/grammar.md` has the draft grammar. One open question: CHIP-8 has no text output, so `print` would have to draw digits using the built-in font sprites.
+A small language with variables, math, and loops that compiles to this assembly. `docs/grammar.md` has the draft grammar. CHIP-8 has no text output, so `print` will draw digits using the built-in font sprites; `examples/sum.asm` shows the pattern by hand (compute, split into decimal digits, draw).
 
 ## Custom instruction set (maybe later)
 
