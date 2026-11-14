@@ -10,7 +10,7 @@ A collection of systems-level projects built from scratch: CPU emulators, compil
 
 | Project | Description | Status |
 |---------|-------------|--------|
-| [CHIP-8 Emulator](cpu-emulator/) | C++ emulator for the CHIP-8 virtual machine. The core has no I/O, so it ports to microcontrollers | CPU complete (34 instructions plus font), checked against community test ROMs; real-time front end next |
+| [CHIP-8 Emulator](cpu-emulator/) | C++ emulator for the CHIP-8 virtual machine. The core has no I/O, so it ports to microcontrollers | Playable: full CPU, real-time terminal front end with keyboard, checked against community test ROMs |
 | [Assembler / Compiler](compiler/) | Python assembler for CHIP-8 with labels, data directives, and tests. A small language comes next | In progress (assembler works; runs real programs like `sum.asm`) |
 | [Firmware](firmware/) | Portable run loop and hardware interface for running the emulator on a microcontroller | In progress (runs on desktop, board port next) |
 
@@ -41,7 +41,7 @@ cd compiler && python3 -m unittest discover -s tests && cd ..
 
 # Assemble a program and run it in the emulator
 python3 compiler/chip8asm.py compiler/examples/zero.asm -o zero.ch8
-make -C cpu-emulator && cpu-emulator/chip8 zero.ch8
+make -C cpu-emulator && cpu-emulator/chip8 --headless zero.ch8
 
 # Run the full pipeline through the firmware loop
 make -C firmware run
