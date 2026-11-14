@@ -1,5 +1,8 @@
 chip8
 test_core
+test_frontend
 *.o
 *.exe
 build/
+__pycache__/
+tests/.conformance-cache/
