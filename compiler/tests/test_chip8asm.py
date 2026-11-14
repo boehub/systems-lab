@@ -173,6 +173,13 @@ class ExampleProgramTests(unittest.TestCase):
         )
         self.assertEqual(rom, expected)
 
+    def test_move_example_assembles_to_known_bytes(self):
+        # Verified by running it in the emulator: a ball moved with keys 2/8/4/6.
+        with open(os.path.join(ROOT, "examples", "move.asm"), encoding="utf-8") as f:
+            rom = assemble(f.read())
+        expected = bytes.fromhex("601C 610E A236 D014 6502 F515 F507 3500 120C D014 6202 E2A1 71FF 6208 E2A1 7101 6204 E2A1 70FF 6206 E2A1 7001 633F 8032 631F 8132 1204 60F0 F060")
+        self.assertEqual(rom, expected)
+
 
 class CHeaderTests(unittest.TestCase):
     def test_header_contains_bytes_and_size(self):

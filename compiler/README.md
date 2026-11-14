@@ -33,7 +33,7 @@ python3 chip8asm.py examples/zero.asm --format c -o rom.h         # C array
 ../cpu-emulator/chip8 --headless zero.ch8                                    # run it
 ```
 
-Two bigger programs run in the emulator as they stand: `examples/zeros.asm` (a subroutine and a loop that draw three glyphs in a row) and `examples/sum.asm` (adds up 1 to 10 and draws the answer, 55, using the built-in font).
+Three bigger programs run in the emulator as they stand: `examples/move.asm` (a ball you move with the keyboard; keys 2, S, Q, E), `examples/zeros.asm` (a subroutine and a loop that draw three glyphs in a row) and `examples/sum.asm` (adds up 1 to 10 and draws the answer, 55, using the built-in font).
 
 ### Tests
 
