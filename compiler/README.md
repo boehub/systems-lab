@@ -1,8 +1,8 @@
 # Assembler / Compiler
 
-A toolchain for the CHIP-8 machine in `../cpu-emulator`. It starts with an assembler; a small programming language that compiles down to it comes next.
+A toolchain for the CHIP-8 machine in `../cpu-emulator`: an assembler, and a small programming language (Nibble) that compiles to it.
 
-**Status:** In progress. The assembler is done and tested. The language is still at the design stage.
+**Status:** Both work and are tested. Programs written in Nibble compile, assemble and run in the emulator.
 
 ## Assembler
 
@@ -45,21 +45,60 @@ The tests check the encoding of every instruction, labels, directives, each kind
 
 The emulator runs every instruction the assembler can produce except `SYS` (`0NNN`), which it deliberately stops on.
 
-## Language (planned)
+## Nibble, a small language
 
-A small language with variables, math, and loops that compiles to this assembly. `docs/grammar.md` has the draft grammar. CHIP-8 has no text output, so `print` will draw digits using the built-in font sprites; `examples/sum.asm` shows the pattern by hand (compute, split into decimal digits, draw).
+```
+// primes.nib (excerpt)
+n = 2
+while n < 72 {
+    prime = 1
+    d = 2
+    while d * d <= n and prime {
+        m = d
+        while m < n { m = m + d }
+        if m == n { prime = 0 }
+        d = d + 1
+    }
+    if prime { print(n) }
+    n = n + 1
+}
+```
+
+Nibble has variables, arithmetic, comparisons, `and`/`or`/`not`, `if`/`else`, `while`, and built-ins to draw numbers and read the keypad. Everything is one byte and wraps around, like a CHIP-8 register. See `docs/language.md` for the full reference and grammar.
+
+```
+python3 nibc.py examples/primes.nib -o primes.ch8     # compile to a ROM
+python3 nibc.py examples/primes.nib -S                # show the generated assembly
+../cpu-emulator/chip8 primes.ch8                      # run it
+```
+
+CHIP-8 has no text output, so `print` draws each digit with the built-in font sprites. Examples: `hello.nib`, `fib.nib`, `primes.nib`, and `counter.nib` (steer a number with the keypad).
+
+The compiler is split into a lexer, parser, checker and code generator (`nibble/`). Errors come with the line, the source text and a caret:
+
+```
+bad.nib: error: line 2: 'i' is used before it is given a value
+    while i < 10 {
+          ^
+```
+
+### How it's tested
+
+`tests/test_nibble.py` has unit tests for each stage, and end-to-end tests that compile a program, run it in the real emulator, and read the digits off the screen. A reference interpreter (`tests/nibble_ref.py`) gives the expected answer for 120 random programs (loops, branches, every operator), and the two must agree exactly. I also broke the code generator on purpose in five ways (a flipped comparison, a skipped register restore, and so on) and checked the tests catch each. The end-to-end tests need `../cpu-emulator/chip8` built; they skip if it isn't, and CI requires it.
 
 ## Custom instruction set (maybe later)
 
-`docs/instruction-set.md` is an early draft of an instruction set of my own. The assembler targets CHIP-8 for now so that everything runs end to end today; a custom machine is a possible later step.
+`docs/instruction-set.md` is an early draft of an instruction set of my own, and `examples/hello.asm` a sketch for it. Nibble targets CHIP-8 so that everything runs end to end today; a custom machine is a possible later step.
 
 ## Layout
 
 ```
 compiler/
 ├── chip8asm.py      the assembler
-├── tests/           unit tests
-├── examples/        sample programs
-├── docs/            grammar and instruction-set drafts
+├── nibc.py          the Nibble compiler (command line)
+├── nibble/          lexer, parser, checker, code generator
+├── tests/           assembler and compiler tests
+├── examples/        sample programs (.asm and .nib)
+├── docs/            language reference, instruction-set draft
 └── README.md
 ```

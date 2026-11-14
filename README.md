@@ -18,7 +18,7 @@ A collection of systems-level projects built from scratch: CPU emulators, compil
 | Project | Description | Status |
 |---------|-------------|--------|
 | [CHIP-8 Emulator](cpu-emulator/) | C++ emulator for the CHIP-8 virtual machine. The core has no I/O, so it ports to microcontrollers | Playable: full CPU, real-time terminal front end with keyboard, checked against community test ROMs |
-| [Assembler / Compiler](compiler/) | Python assembler for CHIP-8 with labels, data directives, and tests. A small language comes next | In progress (assembler works; runs real programs like `sum.asm`) |
+| [Assembler / Compiler](compiler/) | Python assembler for CHIP-8, plus Nibble, a small language (variables, loops, `if`, printing numbers) that compiles to it | Working: tested end to end against the emulator, including on random programs |
 | [Firmware](firmware/) | Portable run loop and hardware interface for running the emulator on a microcontroller | In progress (runs on desktop, board port next) |
 
 More coming as the lab grows.
@@ -26,7 +26,11 @@ More coming as the lab grows.
 ## How the pieces fit
 
 ```
-  program.asm
+  program.nib        (Nibble: x = 2 + 3 * 4  print(x))
+      |
+      |  compiler/nibc.py   (lexer, parser, checker, code generator)
+      v
+  program.asm        (or write assembly by hand)
       |
       |  compiler/chip8asm.py
       v
@@ -43,8 +47,12 @@ More coming as the lab grows.
 From the repo root (needs `g++`, `make`, and Python 3):
 
 ```
-# Run the assembler tests
+# Run the assembler and compiler tests
 cd compiler && python3 -m unittest discover -s tests && cd ..
+
+# Compile a Nibble program and run it
+python3 compiler/nibc.py compiler/examples/fib.nib -o fib.ch8
+make -C cpu-emulator && cpu-emulator/chip8 fib.ch8
 
 # Assemble a program and run it in the emulator
 python3 compiler/chip8asm.py compiler/examples/zero.asm -o zero.ch8
@@ -59,7 +67,7 @@ make -C firmware run
 ```
 systems-lab/
 ├── cpu-emulator/   emulator core (src/), test ROMs (roms/)
-├── compiler/       assembler (chip8asm.py), examples, tests, design docs
+├── compiler/       assembler (chip8asm.py), Nibble compiler (nibc.py), examples, tests, docs
 ├── firmware/       portable run loop (src/), desktop platform (host/)
 ├── docs/           demo recording
 ├── LICENSE         MIT

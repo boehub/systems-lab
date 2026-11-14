@@ -23,8 +23,10 @@ jobs:
       - name: Community test ROMs
         run: make -C cpu-emulator conformance
 
-      - name: Assembler tests
+      - name: Assembler and Nibble compiler tests (compiled programs run in the emulator)
         run: python3 -m unittest discover -s compiler/tests
+        env:
+          REQUIRE_EMULATOR: "1"
 
       - name: Firmware demo builds and runs on the desktop
         run: make -C firmware run
