@@ -585,6 +585,79 @@ static void testUnknownEAndFOpcodes() {
     }
 }
 
+static void testLogicResetsVfQuirk() {
+    // Default: the logic opcodes leave VF alone.
+    for (uint16_t op : {0x8121, 0x8122, 0x8123}) {
+        Chip8 c = machine({op});
+        c.V[0xF] = 1;
+        CHECK(c.cycle());
+        CHECK(c.V[0xF] == 1);
+    }
+    // With the quirk, VF is zeroed afterwards.
+    for (uint16_t op : {0x8121, 0x8122, 0x8123}) {
+        Chip8 c = machine({op});
+        c.quirks.logicResetsVf = true;
+        c.V[1] = 0xF0;
+        c.V[2] = 0x3C;
+        c.V[0xF] = 1;
+        CHECK(c.cycle());
+        CHECK(c.V[0xF] == 0);
+    }
+    // The result is still right.
+    Chip8 r = machine({0x8121});
+    r.quirks.logicResetsVf = true;
+    r.V[1] = 0xF0;
+    r.V[2] = 0x0F;
+    CHECK(r.cycle());
+    CHECK(r.V[1] == 0xFF);
+    // Other opcodes are not affected (8XY4 still sets the carry).
+    Chip8 a = machine({0x8124});
+    a.quirks.logicResetsVf = true;
+    a.V[1] = 200;
+    a.V[2] = 100;
+    CHECK(a.cycle());
+    CHECK(a.V[0xF] == 1);
+}
+
+static void testDisplayWaitQuirk() {
+    const uint8_t glyph[] = {0xF0, 0x90, 0x90, 0x90, 0xF0};
+
+    // Without the quirk, two draws in a row both happen at once.
+    Chip8 free = machine({0xA208, 0xD015, 0xD015});
+    for (int i = 0; i < 5; ++i) free.memory[0x208 + i] = glyph[i];
+    CHECK(free.cycle() && free.cycle());
+    CHECK(free.display[0] == 1);
+    CHECK(free.cycle());  // second draw erases the first immediately
+    CHECK(free.display[0] == 0);
+    CHECK(free.V[0xF] == 1);
+
+    // With the quirk, the second draw waits for the next 60 Hz tick.
+    Chip8 c = machine({0xA208, 0xD015, 0xD015});
+    c.quirks.displayWait = true;
+    for (int i = 0; i < 5; ++i) c.memory[0x208 + i] = glyph[i];
+    CHECK(c.cycle());  // I = glyph
+    CHECK(c.cycle());  // first draw goes through
+    CHECK(c.display[0] == 1);
+    CHECK(c.cycle());  // second draw stalls: same instruction, nothing drawn
+    CHECK(c.pc == 0x204);
+    CHECK(c.display[0] == 1);
+    CHECK(c.cycle());  // still stalled
+    CHECK(c.pc == 0x204);
+    c.tickTimers();    // the next frame begins
+    CHECK(c.cycle());  // now it runs
+    CHECK(c.pc == 0x206);
+    CHECK(c.display[0] == 0);  // erased by the second draw
+    CHECK(c.V[0xF] == 1);
+
+    // A draw as the first thing in a frame is never delayed, and other
+    // instructions are never delayed by an earlier draw.
+    Chip8 d = machine({0xD015, 0x6101});
+    d.quirks.displayWait = true;
+    CHECK(d.cycle());
+    CHECK(d.cycle());
+    CHECK(d.V[1] == 1);
+}
+
 int main() {
     testJumpAndLoads();
     testCallAndReturn();
@@ -619,6 +692,8 @@ int main() {
     testBcd();
     testStoreAndLoadRegisters();
     testUnknownEAndFOpcodes();
+    testLogicResetsVfQuirk();
+    testDisplayWaitQuirk();
 
     std::printf("%d checks, %d failed\n", checks, failures);
     return failures == 0 ? 0 : 1;

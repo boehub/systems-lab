@@ -29,6 +29,12 @@ public:
         // FX55 / FX65: leave I advanced by X+1 afterwards (original COSMAC
         // VIP), instead of unchanged.
         bool loadStoreIncrementsI = false;
+        // 8XY1 / 8XY2 / 8XY3: set VF to 0 afterwards (original COSMAC VIP),
+        // instead of leaving it alone.
+        bool logicResetsVf = false;
+        // DXYN: wait for the next 60 Hz tick, so at most one sprite is drawn
+        // per frame (original COSMAC VIP), instead of drawing immediately.
+        bool displayWait = false;
     };
 
     Chip8();
@@ -70,4 +76,5 @@ public:
 private:
     uint8_t nextRandom();
     uint32_t rngState_ = 0x2545F491;
+    bool drewThisFrame_ = false;  // for the displayWait quirk
 };

@@ -46,6 +46,7 @@ bool Chip8::loadRom(const uint8_t* data, size_t size) {
 void Chip8::tickTimers() {
     if (delayTimer > 0) --delayTimer;
     if (soundTimer > 0) --soundTimer;
+    drewThisFrame_ = false;  // a new frame: drawing is allowed again
 }
 
 void Chip8::seedRandom(uint32_t seed) {
@@ -132,12 +133,15 @@ bool Chip8::cycle() {
                     return true;
                 case 0x1:  // 8XY1: VX |= VY
                     V[x] = vx | vy;
+                    if (quirks.logicResetsVf) V[0xF] = 0;
                     return true;
                 case 0x2:  // 8XY2: VX &= VY
                     V[x] = vx & vy;
+                    if (quirks.logicResetsVf) V[0xF] = 0;
                     return true;
                 case 0x3:  // 8XY3: VX ^= VY
                     V[x] = vx ^ vy;
+                    if (quirks.logicResetsVf) V[0xF] = 0;
                     return true;
                 case 0x4: {  // 8XY4: VX += VY, VF = carry
                     const unsigned sum = vx + vy;
@@ -184,6 +188,11 @@ bool Chip8::cycle() {
             V[x] = nextRandom() & nn;
             return true;
         case 0xD000: {  // DXYN: draw N-row sprite from memory[I] at (VX, VY)
+            if (quirks.displayWait && drewThisFrame_) {
+                pc -= 2;  // already drew this frame: try again after the tick
+                return true;
+            }
+            drewThisFrame_ = true;
             const uint8_t xPos = V[x] % kDisplayWidth;
             const uint8_t yPos = V[y] % kDisplayHeight;
             V[0xF] = 0;
