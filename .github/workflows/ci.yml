@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Emulator unit tests
+        run: make -C cpu-emulator test
+
+      - name: Core stays portable (no I/O)
+        run: make -C cpu-emulator check-core
+
+      - name: Emulator end-to-end tests (pseudo-terminal)
+        run: make -C cpu-emulator test-interactive
+
+      - name: Community test ROMs
+        run: make -C cpu-emulator conformance
+
+      - name: Assembler tests
+        run: python3 -m unittest discover -s compiler/tests
+
+      - name: Firmware demo builds and runs on the desktop
+        run: make -C firmware run

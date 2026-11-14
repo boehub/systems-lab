@@ -1,10 +1,17 @@
 # systems-lab
 
+[![CI](https://github.com/boehub/systems-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/boehub/systems-lab/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A collection of systems-level projects built from scratch: CPU emulators, compilers, and embedded hardware.
 
 ## About
 
 **systems-lab** is my workspace for exploring how computers work from the ground up. It holds projects across the stack, from emulators and toolchains to firmware running on real hardware. Each project lives in its own folder with its own README, build instructions, and notes on what I learned. New experiments get added over time.
+
+![The emulator running a small assembly program in the terminal: a ball moved with the keyboard](docs/demo.gif)
+
+*`compiler/examples/move.asm`, assembled by `chip8asm.py` and run in the emulator.*
 
 ## Projects
 
@@ -54,9 +61,15 @@ systems-lab/
 ├── cpu-emulator/   emulator core (src/), test ROMs (roms/)
 ├── compiler/       assembler (chip8asm.py), examples, tests, design docs
 ├── firmware/       portable run loop (src/), desktop platform (host/)
+├── docs/           demo recording
+├── LICENSE         MIT
 └── README.md
 ```
 
 ## About Me
 
 I'm Ryan, a student at Old Dominion University. I'm building this repo to learn how things work under the hood.
+
+## License
+
+[MIT](LICENSE). The community test ROMs used by `make conformance` are downloaded at test time and are not part of this repository.
