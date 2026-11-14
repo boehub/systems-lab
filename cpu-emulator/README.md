@@ -14,7 +14,7 @@ make
 
 In a terminal the picture is drawn with half-block characters (64x16 cells, so the terminal needs to be at least 64 columns by 17 rows). The program runs at a steady `--speed` instructions per second, and the delay and sound timers tick at 60 Hz in real time no matter the speed. If stdin or stdout isn't a terminal it runs headless automatically.
 
-Programs can be written in assembly and built with `../compiler/chip8asm.py`; `../compiler/examples/sum.asm` adds up 1 to 10 and draws the answer.
+Programs can be written in assembly and built with `../compiler/chip8asm.py`; `../compiler/examples/sum.asm` adds up 1 to 10 and draws the answer, and `../compiler/examples/move.asm` is a ball you steer with the keyboard (keys 2, S, Q, E).
 
 ### Keyboard
 
@@ -90,14 +90,14 @@ A few instructions behave differently on different historical interpreters. They
 
 ## How it's tested
 
-- **Unit tests** (`make test`): 252 checks on the core (every instruction, carry and borrow flags, `VF` used as an operand, every quirk both ways, stack overflow and underflow, reads and writes at the edges of memory) and 123 on the front-end logic (options, key layout, key hold window, exact instruction pacing, rendering). I also checked the tests by breaking the code on purpose and confirming they fail.
+- **Unit tests** (`make test`): 264 checks on the core (every instruction, carry and borrow flags, `VF` used as an operand, every quirk both ways, stack overflow and underflow, reads and writes at the edges of memory) and 123 on the front-end logic (options, key layout, key hold window, exact instruction pacing, rendering). I also checked the tests by breaking the code on purpose and confirming they fail.
 - **End-to-end tests** (`make test-interactive`): 14 tests that run the real program inside a pseudo-terminal. They press keys, check the timer takes a real second to count 60 ticks, check Esc and Ctrl-C restore the terminal, and cover the headless mode and error messages.
-- **Community test ROMs** (`make conformance`): runs [Timendus's chip8-test-suite](https://github.com/Timendus/chip8-test-suite) and counts the checkmarks it draws. Currently 22 of 22 on the corax+ opcode test, 49 of 49 on the flags test, and 6 of 6 on the quirks test (with `--vip`, choosing the CHIP-8 platform). The ROMs are downloaded on first use, checked against a SHA-256 fingerprint, and cached in a git-ignored folder; they aren't part of this repo.
+- **Community test ROMs** (`make conformance`): runs [Timendus's chip8-test-suite](https://github.com/Timendus/chip8-test-suite) and counts the checkmarks it draws. Currently 22 of 22 on the corax+ opcode test, 49 of 49 on the flags test, 6 of 6 on the quirks test (with `--vip`, choosing the CHIP-8 platform), and all three keypad tests (`Ex9E`, `ExA1`, `Fx0A`). The keypad test found a real bug: `FX0A` returned when a key went down, but the original hardware waits for the key to come back up. It's fixed, with unit tests. The ROMs are downloaded on first use, checked against a SHA-256 fingerprint, and cached in a git-ignored folder; they aren't part of this repo.
 
 ## Next up
 
 - Sound: only a bell for now
-- The suite's keypad test, and a SUPER-CHIP mode
+- A SUPER-CHIP mode and the suite's scrolling test
 
 ## Design: a core that ports
 

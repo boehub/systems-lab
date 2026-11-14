@@ -34,6 +34,7 @@ ROMS = {
     "3-corax+.ch8": "1c7e14eae14d6d5e1e47693804110354cbc4081defe4e6e5d9167c25ffc7b4b0",
     "4-flags.ch8": "f00ddadd37bc878473de0c8f16faecf9985dea39036a3a796d551bc9fec47cfa",
     "5-quirks.ch8": "d839350268a3e73c7a16562b3d23c85aa1b92a567f5f61bd6727b1ea44635679",
+    "6-keypad.ch8": "558902b0e406bb97dc808c16d55abf493706598246e3c77aea9d9401063169c9",
 }
 
 # The marks the ROMs draw, as bit patterns of the three leftmost sprite columns.
@@ -129,6 +130,70 @@ def run_quirks(rom):
         s.close()
 
 
+def lit(px):
+    return sum(map(sum, px))
+
+
+def current_screen(s):
+    lines = s.text().split("\x1b[H")[-1].split("\x1b")[0].split("\r\n")
+    return screen_pixels(lines)
+
+
+def stable_screen(s, limit=6.0):
+    """Wait until the picture stops changing (the ROM draws slowly), then return it."""
+    last, same, start = None, 0, time.monotonic()
+    while time.monotonic() - start < limit:
+        s.settle(0.15)
+        px = current_screen(s)
+        same = same + 1 if lit(px) == last else 0
+        last = lit(px)
+        if same >= 3:
+            break
+    return px
+
+
+def hold_key(s, key, seconds):
+    """Keep a key 'down' the way a held key auto-repeats in a terminal."""
+    start = time.monotonic()
+    while time.monotonic() - start < seconds:
+        s.send(key)
+        s.settle(0.05)
+
+
+def run_keypad(rom):
+    """The keypad ROM's three tests: key down (Ex9E), key up (ExA1), wait (Fx0A)."""
+    out = {}
+    for menu, name in (("1", "Ex9E"), ("2", "ExA1")):
+        s = Session(args=["--speed", "1000"], rom_path=rom)
+        try:
+            s.settle(0.3)
+            s.send(menu)
+            idle = lit(stable_screen(s))
+            hold_key(s, "1", 0.4)  # CHIP-8 key 1
+            pressed = lit(current_screen(s))
+            # Ex9E lights up the pressed key; ExA1 lights up every key that is not.
+            out[name] = pressed > idle if name == "Ex9E" else pressed < idle
+            s.send("\x1b")
+            s.finish()
+        finally:
+            s.close()
+
+    s = Session(args=["--speed", "1000"], rom_path=rom)
+    try:
+        s.settle(0.5)
+        s.send("3")
+        s.settle(0.5)
+        s.send("q")  # one press; the key comes back up after the hold window
+        s.settle(0.6)
+        px = current_screen(s)
+        out["Fx0A"] = count(px, CHECK_3ROW) >= 1 and count(px, CROSS_3ROW) == 0
+        s.send("\x1b")
+        s.finish()
+    finally:
+        s.close()
+    return out
+
+
 def main():
     if not os.path.exists(BIN):
         sys.exit(f"{BIN} not found: run `make` first (or `make conformance`)")
@@ -147,6 +212,11 @@ def main():
     checks, crosses = run_quirks(fetch("5-quirks.ch8"))
     results.append(("quirks test (CHIP-8, --vip)", f"{checks} of 6 checkmarks, {crosses} crosses",
                     checks == 6 and crosses == 0))
+
+    keys = run_keypad(fetch("6-keypad.ch8"))
+    results.append(("keypad test (Ex9E, ExA1, Fx0A)",
+                    ", ".join(f"{k} {'ok' if v else 'FAIL'}" for k, v in keys.items()),
+                    all(keys.values())))
 
     width = max(len(name) for name, _, _ in results)
     for name, detail, ok in results:

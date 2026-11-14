@@ -76,5 +76,6 @@ public:
 private:
     uint8_t nextRandom();
     uint32_t rngState_ = 0x2545F491;
+    int waitKey_ = -1;  // key FX0A saw go down, waiting for it to come up
     bool drewThisFrame_ = false;  // for the displayWait quirk
 };

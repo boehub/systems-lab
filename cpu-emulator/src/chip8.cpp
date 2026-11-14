@@ -229,14 +229,23 @@ bool Chip8::cycle() {
                 case 0x07:  // FX07: VX = delay timer
                     V[x] = delayTimer;
                     return true;
-                case 0x0A:  // FX0A: wait for a key, store it in VX
-                    for (uint8_t key = 0; key < 16; ++key) {
-                        if (keypad[key]) {
-                            V[x] = key;
-                            return true;
+                case 0x0A:  // FX0A: wait for a key press AND release, store it in VX
+                    // Like the original COSMAC VIP, the instruction finishes
+                    // when the key comes back up, not when it goes down.
+                    if (waitKey_ < 0) {
+                        for (int key = 0; key < 16; ++key) {
+                            if (keypad[key]) {
+                                waitKey_ = key;
+                                break;
+                            }
                         }
                     }
-                    pc -= 2;  // no key yet: run this instruction again
+                    if (waitKey_ >= 0 && !keypad[waitKey_]) {
+                        V[x] = static_cast<uint8_t>(waitKey_);
+                        waitKey_ = -1;
+                        return true;
+                    }
+                    pc -= 2;  // still waiting: run this instruction again
                     return true;
                 case 0x15:  // FX15: delay timer = VX
                     delayTimer = V[x];

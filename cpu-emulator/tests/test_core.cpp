@@ -437,21 +437,43 @@ static void testKeySkips() {
 }
 
 static void testWaitForKey() {
-    Chip8 c = machine({0xF30A});  // FX0A: wait for a key
+    Chip8 c = machine({0xF30A});  // FX0A: wait for a key press and release
     CHECK(c.cycle());
     CHECK(c.pc == 0x200);  // no key: the same instruction runs again
     CHECK(c.V[3] == 0);
 
-    c.keypad[7] = 1;
+    c.keypad[7] = 1;       // pressed: still waiting
+    CHECK(c.cycle());
+    CHECK(c.pc == 0x200);
+    CHECK(c.V[3] == 0);
+    CHECK(c.cycle());      // still held
+    CHECK(c.pc == 0x200);
+
+    c.keypad[7] = 0;       // released: done
     CHECK(c.cycle());
     CHECK(c.V[3] == 7);
     CHECK(c.pc == 0x202);  // moved on
 
+    // The wait starts over for the next FX0A.
+    Chip8 e = machine({0xF30A, 0xF40A});
+    e.keypad[2] = 1;
+    CHECK(e.cycle());
+    e.keypad[2] = 0;
+    CHECK(e.cycle());
+    CHECK(e.V[3] == 2 && e.pc == 0x202);
+    CHECK(e.cycle());
+    CHECK(e.pc == 0x202);  // second FX0A waits for a new press
+    CHECK(e.V[4] == 0);
+
+    // Several keys down: the lowest-numbered one is the one waited on.
     Chip8 d = machine({0xF30A});
     d.keypad[9] = 1;
     d.keypad[3] = 1;
     CHECK(d.cycle());
-    CHECK(d.V[3] == 3);  // lowest held key
+    d.keypad[9] = 0;
+    d.keypad[3] = 0;
+    CHECK(d.cycle());
+    CHECK(d.V[3] == 3);
 }
 
 static void testTimerOpcodes() {
