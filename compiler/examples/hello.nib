@@ -1,0 +1,3 @@
+// The first program from the language design: 2 + 3 * 4.
+// * binds tighter than +, so this prints 14.
+print(2 + 3 * 4)

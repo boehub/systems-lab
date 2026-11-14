@@ -1,0 +1,18 @@
+// Fibonacci numbers, as many as fit in one byte (up to 233).
+// Numbers wrap past 255, so the loop runs while the sequence is still
+// increasing: after 233 the next value wraps around to 121 and we stop.
+// Shows variables, a loop, and the text cursor (print, newline).
+a = 0
+b = 1
+count = 0
+while b >= a {
+    print(b)
+    count = count + 1
+    if count == 3 {          // three numbers per row (the screen is 64 pixels wide)
+        newline()
+        count = 0
+    }
+    next = a + b
+    a = b
+    b = next
+}

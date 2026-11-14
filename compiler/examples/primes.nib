@@ -1,0 +1,24 @@
+// Prime numbers below 72 (as many as fit on the screen), found by trial division.
+// There is no divide or remainder, so "d divides n" is checked by
+// counting up in steps of d and seeing whether we land exactly on n.
+n = 2
+shown = 0
+while n < 72 {
+    prime = 1
+    d = 2
+    while d * d <= n and prime {
+        m = d
+        while m < n { m = m + d }
+        if m == n { prime = 0 }
+        d = d + 1
+    }
+    if prime {
+        print(n)
+        shown = shown + 1
+        if shown == 4 {
+            newline()
+            shown = 0
+        }
+    }
+    n = n + 1
+}

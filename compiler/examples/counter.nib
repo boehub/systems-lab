@@ -1,0 +1,10 @@
+// A counter you control from the keypad (QWERTY: 2 = up, S = down).
+// Uses pressed(), wait(), clear() and at().
+n = 0
+while 1 {
+    clear()
+    print(n)
+    if pressed(2) { n = n + 1 }
+    if pressed(8) { n = n - 1 }
+    wait(2)
+}
