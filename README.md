@@ -19,7 +19,7 @@ A collection of systems-level projects built from scratch: CPU emulators, compil
 |---------|-------------|--------|
 | [CHIP-8 Emulator](cpu-emulator/) | C++ emulator for the CHIP-8 virtual machine. The core has no I/O, so it ports to microcontrollers | Playable: full CPU, real-time terminal front end with keyboard, checked against community test ROMs |
 | [Assembler / Compiler](compiler/) | Python assembler for CHIP-8, plus Nibble, a small language (variables, loops, `if`, printing numbers) that compiles to it | Working: tested end to end against the emulator, including on random programs |
-| [Firmware](firmware/) | Portable run loop and hardware interface for running the emulator on a microcontroller | In progress (runs on desktop, board port next) |
+| [Firmware](firmware/) | The emulator on a Raspberry Pi Pico with an OLED, keypad and buzzer: portable run loop, hardware interface, Pico build | Builds for the Pico (also in CI); tests cover everything but the pins; not yet run on a physical board |
 
 More coming as the lab grows.
 
@@ -38,7 +38,7 @@ More coming as the lab grows.
       |
       |  as a C array
       v
-  firmware run loop ---> platform layer ---> terminal today, OLED + buttons later
+  firmware run loop ---> platform layer ---> terminal (desktop) or OLED + keypad (Pico)
         (uses the same emulator core)
 ```
 
@@ -68,7 +68,7 @@ make -C firmware run
 systems-lab/
 ├── cpu-emulator/   emulator core (src/), test ROMs (roms/)
 ├── compiler/       assembler (chip8asm.py), Nibble compiler (nibc.py), examples, tests, docs
-├── firmware/       portable run loop (src/), desktop platform (host/)
+├── firmware/       portable run loop (src/), desktop (host/) and Raspberry Pi Pico (pico/) platforms
 ├── docs/           demo recording
 ├── LICENSE         MIT
 └── README.md

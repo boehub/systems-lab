@@ -30,3 +30,34 @@ jobs:
 
       - name: Firmware demo builds and runs on the desktop
         run: make -C firmware run
+
+      - name: Firmware logic tests (OLED packing, keypad matrix)
+        run: make -C firmware test
+
+  pico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ARM toolchain and CMake
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+
+      - name: Get the Pico SDK
+        run: git clone --depth 1 --branch 2.1.1 https://github.com/raspberrypi/pico-sdk.git "$RUNNER_TEMP/pico-sdk"
+
+      - name: Build the Pico firmware
+        env:
+          PICO_SDK_PATH: ${{ runner.temp }}/pico-sdk
+        run: |
+          cmake -S firmware/pico -B build-pico -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-pico --target chip8_pico -j2
+          arm-none-eabi-size build-pico/chip8_pico.elf
+
+      - name: Build it with a Nibble program embedded
+        env:
+          PICO_SDK_PATH: ${{ runner.temp }}/pico-sdk
+        run: |
+          cmake -S firmware/pico -B build-pico-nib -DROM=$PWD/compiler/examples/fib.nib
+          cmake --build build-pico-nib --target chip8_pico -j2
