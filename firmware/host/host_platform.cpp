@@ -57,6 +57,8 @@ void drawFrame(const uint8_t* pixels, int width, int height) {
 
 uint16_t readKeys() { return 0; }  // no keyboard input on the host yet
 
+void setBuzzer(bool) {}
+
 bool keepRunning() { return frame++ < kHostFrames; }
 
 }  // namespace platform

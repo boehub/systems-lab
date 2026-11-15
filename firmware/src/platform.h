@@ -7,7 +7,7 @@
 // new board means implementing this file once:
 //
 //   host/host_platform.cpp   terminal + desktop clock (works today)
-//   (future) pico/...        OLED display, GPIO buttons, hardware timer
+//   pico/pico_platform.cpp   Raspberry Pi Pico: OLED, button matrix, buzzer
 namespace platform {
 
 // Set up display, buttons, and clock.
@@ -24,6 +24,10 @@ void drawFrame(const uint8_t* pixels, int width, int height);
 
 // Keypad state: bit i set means CHIP-8 key i (0x0..0xF) is held down.
 uint16_t readKeys();
+
+// Turn the buzzer on or off (the CHIP-8 sound timer is running). The host
+// build ignores this.
+void setBuzzer(bool on);
 
 // Return false to stop the run loop. Hardware returns true forever; the host
 // build stops after a couple of seconds so it can be run as a demo.

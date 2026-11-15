@@ -8,14 +8,22 @@
 namespace {
 
 constexpr uint32_t kFrameMs = 1000 / 60;  // timers tick at 60 Hz
-constexpr int kCyclesPerFrame = 10;       // about 600 instructions per second
+
+// Instructions per 60 Hz frame; 12 is about 720 per second. A board build can
+// change it with -DCHIP8_CYCLES_PER_FRAME=N.
+#ifndef CHIP8_CYCLES_PER_FRAME
+#define CHIP8_CYCLES_PER_FRAME 12
+#endif
+constexpr int kCyclesPerFrame = CHIP8_CYCLES_PER_FRAME;
 
 }  // namespace
 
 int main() {
     platform::init();
 
-    Chip8 chip8;
+    // Static, not on the stack: the machine is about 6 KB and a microcontroller's
+    // stack is typically 2 KB or less (the Pico's default).
+    static Chip8 chip8;
     if (!chip8.loadRom(program, program_size)) {
         return 1;  // ROM doesn't fit in CHIP-8 memory
     }
@@ -40,6 +48,7 @@ int main() {
             chip8.tickTimers();
         }
 
+        platform::setBuzzer(chip8.soundTimer > 0);
         platform::drawFrame(chip8.display.data(), Chip8::kDisplayWidth,
                             Chip8::kDisplayHeight);
 
