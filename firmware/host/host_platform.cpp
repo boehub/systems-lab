@@ -59,6 +59,13 @@ uint16_t readKeys() { return 0; }  // no keyboard input on the host yet
 
 void setBuzzer(bool) {}
 
+bool menuButton() { return false; }
+
+uint32_t randomSeed() {
+    return static_cast<uint32_t>(
+        std::chrono::steady_clock::now().time_since_epoch().count());
+}
+
 bool keepRunning() { return frame++ < kHostFrames; }
 
 }  // namespace platform

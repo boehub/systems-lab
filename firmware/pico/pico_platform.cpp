@@ -1,6 +1,6 @@
 // Raspberry Pi Pico implementation of platform.h:
 //   display  SSD1306 128x64 OLED over I2C (each CHIP-8 pixel drawn as 2x2)
-//   input    4x4 button matrix on GPIO
+//   input    4x4 button matrix on GPIO, plus one MENU button
 //   sound    active buzzer on a GPIO
 //
 // The parts that are plain logic live in oled_frame.cpp and keypad_matrix.cpp,
@@ -12,6 +12,7 @@
 #include "hardware/i2c.h"
 #include "keypad_matrix.h"
 #include "oled_frame.h"
+#include "pico/rand.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
 #include "pins.h"
@@ -101,6 +102,10 @@ void init() {
         gpio_pull_down(pin);
     }
 
+    gpio_init(PIN_MENU_BUTTON);
+    gpio_set_dir(PIN_MENU_BUTTON, GPIO_IN);
+    gpio_pull_up(PIN_MENU_BUTTON);
+
     gpio_init(PIN_BUZZER);
     gpio_set_dir(PIN_BUZZER, GPIO_OUT);
     gpio_put(PIN_BUZZER, 0);
@@ -137,6 +142,10 @@ uint16_t readKeys() {
 }
 
 void setBuzzer(bool on) { gpio_put(PIN_BUZZER, on); }
+
+bool menuButton() { return !gpio_get(PIN_MENU_BUTTON); }  // pressed pulls it low
+
+uint32_t randomSeed() { return get_rand_32(); }  // the chip's hardware noise source
 
 bool keepRunning() { return true; }
 

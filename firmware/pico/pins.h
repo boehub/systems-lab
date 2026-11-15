@@ -20,5 +20,9 @@
 #define PIN_COL_2 16      // physical pin 21
 #define PIN_COL_3 17      // physical pin 22
 
+// MENU button: a single push button between this pin and GND (the Pico's
+// internal pull-up holds it high). Hold it for about 0.2 s to leave a program.
+#define PIN_MENU_BUTTON 19  // physical pin 25
+
 // Buzzer (an "active" buzzer, which beeps when given power)
 #define PIN_BUZZER 18     // physical pin 24

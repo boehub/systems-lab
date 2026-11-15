@@ -29,6 +29,15 @@ uint16_t readKeys();
 // build ignores this.
 void setBuzzer(bool on);
 
+// True while the MENU button is held (an extra button, separate from the
+// 16-key pad). Returns to the program menu; with a single program built in, it
+// restarts that program. The host build has no such button.
+bool menuButton();
+
+// A number that differs from one boot to the next, to seed the random number
+// generator (CXNN). Hardware uses its noise source; the host uses the clock.
+uint32_t randomSeed();
+
 // Return false to stop the run loop. Hardware returns true forever; the host
 // build stops after a couple of seconds so it can be run as a demo.
 bool keepRunning();
