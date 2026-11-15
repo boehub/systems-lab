@@ -680,6 +680,43 @@ static void testDisplayWaitQuirk() {
     CHECK(d.V[1] == 1);
 }
 
+static void testReset() {
+    // A used machine: program loaded, registers set, screen drawn, mid-call.
+    Chip8 c = machine({0x6005, 0xA050, 0xD015, 0x2208});  // V0=5, I=font 0, draw, call
+    c.quirks.shiftUsesVy = true;
+    for (int i = 0; i < 4; ++i) CHECK(c.cycle());
+    c.delayTimer = 9;
+    c.soundTimer = 9;
+    c.keypad[3] = 1;
+    CHECK(c.sp == 1);
+    bool drawn = false;
+    for (uint8_t p : c.display) drawn = drawn || p;
+    CHECK(drawn);
+
+    c.reset();
+    CHECK(c.pc == 0x200 && c.sp == 0 && c.I == 0);
+    CHECK(c.V[0] == 0 && c.delayTimer == 0 && c.soundTimer == 0 && c.keypad[3] == 0);
+    CHECK(c.memory[0x200] == 0 && c.memory[0x201] == 0);  // the old ROM is gone
+    bool blank = true;
+    for (uint8_t p : c.display) blank = blank && p == 0;
+    CHECK(blank);
+    CHECK(c.memory[0x50] == 0xF0 && c.memory[0x50 + 79] == 0x80);  // font is back
+    CHECK(c.quirks.shiftUsesVy);                                   // settings are kept
+
+    // And it runs a fresh program normally afterwards.
+    const uint8_t rom[] = {0x61, 0x2A};  // V1 = 42
+    CHECK(c.loadRom(rom, sizeof rom));
+    CHECK(c.cycle());
+    CHECK(c.V[1] == 42);
+
+    // A reset machine matches a newly built one.
+    Chip8 fresh;
+    Chip8 again = machine({0x1234});
+    again.cycle();
+    again.reset();
+    CHECK(again.memory == fresh.memory && again.V == fresh.V && again.pc == fresh.pc);
+}
+
 int main() {
     testJumpAndLoads();
     testCallAndReturn();
@@ -708,6 +745,7 @@ int main() {
     testRandom();
     testKeySkips();
     testWaitForKey();
+    testReset();
     testTimerOpcodes();
     testAddToIndex();
     testFontOpcode();

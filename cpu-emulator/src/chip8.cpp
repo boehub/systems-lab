@@ -27,7 +27,23 @@ static_assert(Chip8::kFontAddress + sizeof(kFont) <= Chip8::kStartAddress,
 
 }  // namespace
 
-Chip8::Chip8() {
+Chip8::Chip8() { reset(); }
+
+void Chip8::reset() {
+    memory.fill(0);
+    V.fill(0);
+    stack.fill(0);
+    display.fill(0);
+    keypad.fill(0);
+    I = 0;
+    pc = kStartAddress;
+    sp = 0;
+    delayTimer = 0;
+    soundTimer = 0;
+    lastOpcode = 0;
+    lastPc = 0;
+    waitKey_ = -1;
+    drewThisFrame_ = false;
     for (size_t i = 0; i < sizeof(kFont); ++i) {
         memory[kFontAddress + i] = kFont[i];
     }

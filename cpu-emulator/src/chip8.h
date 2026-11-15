@@ -39,6 +39,12 @@ public:
 
     Chip8();
 
+    // Put the machine back to power-on state: memory cleared, font loaded,
+    // registers, stack, timers, display and keys cleared. Keeps `quirks` and
+    // the random number generator where they are. Done in place, so it needs
+    // no spare copy of the machine (matters on a microcontroller).
+    void reset();
+
     // Copy a ROM image into memory at 0x200. Returns false if it doesn't fit.
     bool loadRom(const uint8_t* data, size_t size);
 
