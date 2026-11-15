@@ -31,8 +31,11 @@ jobs:
       - name: Firmware demo builds and runs on the desktop
         run: make -C firmware run
 
-      - name: Firmware logic tests (OLED packing, keypad matrix)
+      - name: Firmware tests (menu, font, timing, OLED packing, keypad, ROM table)
         run: make -C firmware test
+
+      - name: Firmware menu builds on the desktop
+        run: make -C firmware menu
 
   pico:
     runs-on: ubuntu-latest
@@ -55,9 +58,9 @@ jobs:
           cmake --build build-pico --target chip8_pico -j2
           arm-none-eabi-size build-pico/chip8_pico.elf
 
-      - name: Build it with a Nibble program embedded
+      - name: Build it with a single program (no menu)
         env:
           PICO_SDK_PATH: ${{ runner.temp }}/pico-sdk
         run: |
-          cmake -S firmware/pico -B build-pico-nib -DROM=$PWD/compiler/examples/fib.nib
-          cmake --build build-pico-nib --target chip8_pico -j2
+          cmake -S firmware/pico -B build-pico-one -DROMS=$PWD/compiler/examples/fib.nib
+          cmake --build build-pico-one --target chip8_pico -j2

@@ -16,6 +16,7 @@ Pin assignments for the Raspberry Pi Pico build. They are all in one file, `pico
 | Keypad column 1 | GP15 (pin 20) | keypad column 1 |
 | Keypad column 2 | GP16 (pin 21) | keypad column 2 |
 | Keypad column 3 | GP17 (pin 22) | keypad column 3 (right) |
+| MENU button | GP19 (pin 25) | one leg of a push button; the other leg to GND (pin 23 or 28) |
 | Buzzer drive | GP18 (pin 24) | 1 kΩ resistor to the transistor's base |
 
 ## Keypad
@@ -32,6 +33,10 @@ Key layout, as the program sees it (this is the standard CHIP-8 pad):
 7 8 9 E
 A 0 B F
 ```
+
+## MENU button
+
+One push button between GP19 and any GND pin; the Pico's internal pull-up does the rest (no resistor needed). Hold it for about a fifth of a second to leave a program and return to the menu. With only one program built in, it restarts that program instead. See `../README.md` for how the menu works.
 
 ## Buzzer (optional)
 
@@ -51,3 +56,4 @@ If you skip it, nothing else changes; the firmware just drives an unconnected pi
 - OLED VCC is on 3V3, not VBUS (5 V)
 - SDA and SCL are not swapped
 - Every wire ends up on a different pin: check rows against columns
+- The MENU button joins GP19 to GND (not to 3V3)

@@ -86,10 +86,6 @@ bad.nib: error: line 2: 'i' is used before it is given a value
 
 `tests/test_nibble.py` has unit tests for each stage, and end-to-end tests that compile a program, run it in the real emulator, and read the digits off the screen. A reference interpreter (`tests/nibble_ref.py`) gives the expected answer for 120 random programs (loops, branches, every operator), and the two must agree exactly. I also broke the code generator on purpose in five ways (a flipped comparison, a skipped register restore, and so on) and checked the tests catch each. The end-to-end tests need `../cpu-emulator/chip8` built; they skip if it isn't, and CI requires it.
 
-## Custom instruction set (maybe later)
-
-`docs/instruction-set.md` is an early draft of an instruction set of my own, and `examples/hello.asm` a sketch for it. Nibble targets CHIP-8 so that everything runs end to end today; a custom machine is a possible later step.
-
 ## Layout
 
 ```
@@ -99,6 +95,6 @@ compiler/
 ├── nibble/          lexer, parser, checker, code generator
 ├── tests/           assembler and compiler tests
 ├── examples/        sample programs (.asm and .nib)
-├── docs/            language reference, instruction-set draft
+├── docs/            language reference
 └── README.md
 ```

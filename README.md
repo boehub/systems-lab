@@ -19,7 +19,7 @@ A collection of systems-level projects built from scratch: CPU emulators, compil
 |---------|-------------|--------|
 | [CHIP-8 Emulator](cpu-emulator/) | C++ emulator for the CHIP-8 virtual machine. The core has no I/O, so it ports to microcontrollers | Playable: full CPU, real-time terminal front end with keyboard, checked against community test ROMs |
 | [Assembler / Compiler](compiler/) | Python assembler for CHIP-8, plus Nibble, a small language (variables, loops, `if`, printing numbers) that compiles to it | Working: tested end to end against the emulator, including on random programs |
-| [Firmware](firmware/) | The emulator on a Raspberry Pi Pico with an OLED, keypad and buzzer: portable run loop, hardware interface, Pico build | Builds for the Pico (also in CI); tests cover everything but the pins; not yet run on a physical board |
+| [Firmware](firmware/) | The emulator on a Raspberry Pi Pico with an OLED, keypad and buzzer: portable run loop, a program menu, hardware interface, Pico build | Builds for the Pico (also in CI); tests cover everything but the pins; not yet run on a physical board |
 
 More coming as the lab grows.
 
@@ -47,19 +47,22 @@ More coming as the lab grows.
 From the repo root (needs `g++`, `make`, and Python 3):
 
 ```
-# Run the assembler and compiler tests
-cd compiler && python3 -m unittest discover -s tests && cd ..
+# Build the emulator and run all the tests (the compiler's tests run
+# programs in the emulator, so it has to be built first)
+make -C cpu-emulator && make -C cpu-emulator test test-interactive
+(cd compiler && python3 -m unittest discover -s tests)
 
 # Compile a Nibble program and run it
 python3 compiler/nibc.py compiler/examples/fib.nib -o fib.ch8
-make -C cpu-emulator && cpu-emulator/chip8 fib.ch8
+cpu-emulator/chip8 fib.ch8
 
 # Assemble a program and run it in the emulator
 python3 compiler/chip8asm.py compiler/examples/zero.asm -o zero.ch8
-make -C cpu-emulator && cpu-emulator/chip8 --headless zero.ch8
+cpu-emulator/chip8 --headless zero.ch8
 
-# Run the full pipeline through the firmware loop
+# Run the full pipeline through the firmware loop, and see the Pico's program menu
 make -C firmware run
+make -C firmware menu
 ```
 
 ## Repo Layout
@@ -68,8 +71,8 @@ make -C firmware run
 systems-lab/
 ├── cpu-emulator/   emulator core (src/), test ROMs (roms/)
 ├── compiler/       assembler (chip8asm.py), Nibble compiler (nibc.py), examples, tests, docs
-├── firmware/       portable run loop (src/), desktop (host/) and Raspberry Pi Pico (pico/) platforms
-├── docs/           demo recording
+├── firmware/       run loop and program menu (src/), desktop (host/) and Raspberry Pi Pico (pico/) platforms
+├── docs/           demo recording, menu picture
 ├── LICENSE         MIT
 └── README.md
 ```
