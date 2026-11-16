@@ -2,7 +2,7 @@
 
 import math
 
-from . import geometry
+from . import geometry, projection
 from .shapefile import POLYGON
 
 
@@ -24,18 +24,64 @@ def _crs_warnings(tif, shp):
     return warnings
 
 
-def zonal_stats(tif, shp, band=0):
+def _crs_of(tif, shp):
+    """(raster CRS, polygon CRS), each None when it is missing or not understood."""
+    raster = polys = None
+    if tif.georef is not None and tif.georef.epsg:
+        try:
+            raster = projection.from_epsg(tif.georef.epsg)
+        except projection.ProjectionError:
+            pass
+    if shp.prj:
+        try:
+            polys = projection.from_wkt(shp.prj)
+        except projection.ProjectionError:
+            pass
+    return raster, polys
+
+
+def zonal_stats(tif, shp, band=0, reproject=True):
     """One result per polygon: how many cells have their centre inside it, and
     the min / max / mean / sum of their values (no-data cells are left out).
 
-    The raster and polygons must already share a coordinate system; nothing is
-    reprojected. Returns (rows, warnings).
+    When both coordinate systems are known and differ, the polygons are moved
+    into the raster's system first (their edges are subdivided so they curve the
+    way they should) and a note says so; `area` stays in the polygons' own
+    units. When either is unknown the two are assumed to match, and warnings
+    point out the obvious mismatches. Returns (rows, warnings).
     """
     if tif.georef is None:
         raise ValueError("the raster has no georeferencing")
+    raster_crs, poly_crs = _crs_of(tif, shp)
+    notes = []
+    features = shp.features
+    if reproject and raster_crs and poly_crs:
+        if raster_crs != poly_crs:
+            tr = projection.Transformer(poly_crs, raster_crs)
+            # edges are cut into pieces no longer than 1/100 of the polygon layer's width
+            sx0, sy0, sx1, sy1 = shp.bbox
+            step = max(sx1 - sx0, sy1 - sy0) / 100.0
+            moved = []
+            for f in features:
+                if f.kind == POLYGON and f.parts:
+                    nf = projection.transform_feature(f, tr, step)
+                    moved.append((f, nf))
+            features = moved
+            notes.append(f"polygons reprojected from {poly_crs.name or poly_crs.kind} to "
+                         f"{raster_crs.name or raster_crs.kind} to match the raster")
+        else:
+            features = [(f, f) for f in features]
+        warnings = notes
+    else:
+        features = [(f, f) for f in features]
+        warnings = _crs_warnings(tif, shp)
+    return _zonal(tif, features, band), warnings
+
+
+def _zonal(tif, features, band):
     g, data = tif.georef, tif.read_band(band)
     rows = []
-    for feat in shp.features:
+    for orig, feat in features:
         if feat.kind != POLYGON or feat.bbox is None:
             continue
         xmin, ymin, xmax, ymax = feat.bbox
@@ -61,8 +107,8 @@ def zonal_stats(tif, shp, band=0):
                 lo = v if lo is None or v < lo else lo
                 hi = v if hi is None or v > hi else hi
         rows.append({
-            "record": feat.record, "attrs": feat.attrs, "area": feat.area,
+            "record": orig.record, "attrs": orig.attrs, "area": orig.area,
             "cells": cells, "valid": valid, "min": lo, "max": hi,
             "mean": total / valid if valid else None, "sum": total if valid else None,
         })
-    return rows, _crs_warnings(tif, shp)
+    return rows

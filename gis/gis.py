@@ -9,6 +9,11 @@
     gis.py stats   FILE.tif [--band N]        min / max / mean, and a histogram
     gis.py preview FILE.tif [--width N]       a text picture of the raster
     gis.py zonal   FILE.tif FILE.shp          mean elevation (etc.) inside each polygon
+    gis.py project --to CRS [--from CRS] X Y ...   convert coordinates (or read "x y" lines on stdin)
+    gis.py reproject IN.shp OUT.shp --to CRS  write a shapefile in another coordinate system
+    gis.py reproject IN.tif --to CRS          where a raster's footprint lands in another system
+
+A CRS is an EPSG code (4326, EPSG:32618), utm:18N, a .prj file, or WKT text.
 
 Add --csv to table, query and zonal for output a spreadsheet can open.
 """
@@ -24,6 +29,8 @@ from geo import GeoError, open_geotiff, open_shapefile  # noqa: E402
 from geo import geometry  # noqa: E402
 from geo.shapefile import TYPE_NAMES, POLYGON, POLYLINE  # noqa: E402
 from geo.zonal import zonal_stats  # noqa: E402
+from geo import projection  # noqa: E402
+from geo.shpwrite import write_shapefile  # noqa: E402
 
 RAMP = " .:-=+*#%@"
 
@@ -77,7 +84,7 @@ def cmd_info(a):
             b = g.bounds()
             print(f"  cell size     {fmt(g.dx, 8)} x {fmt(g.dy, 8)}")
             print(f"  extent        x {fmt(b[0], 8)} .. {fmt(b[2], 8)}   y {fmt(b[1], 8)} .. {fmt(b[3], 8)}")
-            print(f"  EPSG          {g.epsg or 'not given'}")
+            print(f"  EPSG          {g.epsg or 'not given'}{describe_crs(epsg=g.epsg)}")
         else:
             print("  not georeferenced")
     else:
@@ -88,8 +95,18 @@ def cmd_info(a):
         if s.has_z_or_m:
             print("  note          Z/M values are present in the file and ignored")
         print(f"  coordinates   {s.prj[:60] + '...' if len(s.prj) > 60 else s.prj or 'no .prj file'}")
+        if s.prj:
+            print(f"  understood as {describe_crs(wkt=s.prj).strip(' ()') or 'not a system this program can convert'}")
         if s.fields:
             print("  fields        " + ", ".join(f"{n} ({t}{l})" for n, t, l, _ in s.fields))
+
+
+def describe_crs(epsg=None, wkt=None):
+    try:
+        c = projection.from_epsg(epsg) if epsg else projection.from_wkt(wkt)
+    except projection.ProjectionError:
+        return ""
+    return f" ({c.name or c.kind}, {'degrees' if c.is_geographic else 'projected, ' + c.kind})"
 
 
 def attr_columns(s):
@@ -139,7 +156,12 @@ def cmd_query(a):
 
 def cmd_sample(a):
     t = open_geotiff(a.file)
-    v = t.sample(a.x, a.y, a.band - 1)
+    x, y = a.x, a.y
+    if a.crs:
+        if not (t.georef and t.georef.epsg):
+            raise GeoError("the raster does not say which coordinate system it uses, so --crs cannot be applied")
+        x, y = projection.Transformer(a.crs, projection.from_epsg(t.georef.epsg))(x, y)
+    v = t.sample(x, y, a.band - 1)
     if v is None:
         print("no value (outside the raster, or no-data)")
         return 1
@@ -196,7 +218,7 @@ def cmd_zonal(a):
         raise GeoError(f"{a.polygons} holds {TYPE_NAMES.get(s.kind, 'unknown')} features; zonal statistics needs polygons")
     rows, warnings = zonal_stats(t, s, a.band - 1)
     for w in warnings:
-        print(f"warning: {w}", file=sys.stderr)
+        print(f"{'note' if w.startswith('polygons reprojected') else 'warning'}: {w}", file=sys.stderr)
     label = a.field
     if label and label not in attr_columns(s):
         raise GeoError(f"no field '{label}' in the shapefile (fields: {', '.join(attr_columns(s))})")
@@ -206,6 +228,82 @@ def cmd_zonal(a):
         names = [r["attrs"].get(label)] if label else [r["attrs"].get(c) for c in attr_columns(s)]
         out.append([r["record"]] + names + [r["cells"], r["valid"], r["min"], r["max"], r["mean"]])
     print_table(header, out, as_csv=a.csv)
+
+
+def fmt_coord(v):
+    text = f"{v:.{9 if abs(v) < 1000 else 4}f}".rstrip("0").rstrip(".")
+    return "0" if text in ("", "-0") else text
+
+
+def cmd_project(a):
+    src = projection.parse_crs(a.src)
+    tr = projection.Transformer(src, a.to)
+    if a.coords:
+        if len(a.coords) % 2:
+            raise GeoError("give coordinates as pairs: X Y [X Y ...]")
+        try:
+            pairs = [(float(a.coords[i]), float(a.coords[i + 1])) for i in range(0, len(a.coords), 2)]
+        except ValueError:
+            raise GeoError("coordinates must be numbers") from None
+    else:
+        pairs = []
+        for n, line in enumerate(sys.stdin, 1):
+            line = line.split("#")[0].replace(",", " ").split()
+            if not line:
+                continue
+            try:
+                pairs.append((float(line[0]), float(line[1])))
+            except (ValueError, IndexError):
+                raise GeoError(f"stdin line {n}: expected 'x y'") from None
+    for x, y in pairs:
+        ox, oy = tr(x, y)
+        print(f"{fmt_coord(ox)} {fmt_coord(oy)}")
+
+
+def cmd_reproject(a):
+    dst = projection.parse_crs(a.to)
+    if kind_of(a.input) == "tif":
+        t = open_geotiff(a.input)
+        g = t.georef
+        if not g:
+            raise GeoError("the raster has no georeferencing")
+        if a.src:
+            src = projection.parse_crs(a.src)
+        elif g.epsg:
+            src = projection.from_epsg(g.epsg)
+        else:
+            raise GeoError("the raster does not say which coordinate system it uses; pass --from")
+        tr = projection.Transformer(src, dst)
+        x0, y0, x1, y1 = g.bounds()
+        print(f"{a.input}: footprint in {dst.name or dst.kind}")
+        for label, (x, y) in (("top-left", (x0, y1)), ("top-right", (x1, y1)),
+                              ("bottom-right", (x1, y0)), ("bottom-left", (x0, y0))):
+            ox, oy = tr(x, y)
+            print(f"  {label:<13}{fmt_coord(ox)} {fmt_coord(oy)}")
+        b = projection.transform_bounds(g.bounds(), tr)
+        print(f"  bounding box  x {fmt_coord(b[0])} .. {fmt_coord(b[2])}   y {fmt_coord(b[1])} .. {fmt_coord(b[3])}")
+        print("  (the raster itself is not resampled)")
+        return 0
+    if not a.output:
+        raise GeoError("give an output file: gis.py reproject IN.shp OUT.shp --to CRS")
+    if kind_of(a.output) != "shp":
+        raise GeoError("the output must be a .shp file")
+    s = open_shapefile(a.input)
+    if a.src:
+        src = projection.parse_crs(a.src)
+    elif s.prj:
+        src = projection.from_wkt(s.prj)
+    else:
+        raise GeoError(f"{a.input} has no .prj file; pass --from to say what its coordinates are")
+    tr = projection.Transformer(src, dst)
+    step = 0.0
+    if s.kind in (POLYGON, POLYLINE) and not tr.identity:
+        b = s.bbox
+        step = max(b[2] - b[0], b[3] - b[1]) / a.detail
+    feats = [projection.transform_feature(f, tr, step) for f in s.features]
+    write_shapefile(a.output, s.kind, feats, s.fields, dst.to_wkt())
+    print(f"wrote {a.output}: {len(feats)} {TYPE_NAMES[s.kind]} feature(s) in {dst.name or dst.kind}")
+    return 0
 
 
 def main(argv=None):
@@ -234,6 +332,7 @@ def main(argv=None):
     p.add_argument("x", type=float)
     p.add_argument("y", type=float)
     p.add_argument("--band", type=int, default=1)
+    p.add_argument("--crs", help="the coordinate system X Y are written in, if not the raster's own")
     p.set_defaults(fn=cmd_sample)
 
     p = sub.add_parser("stats", help="raster statistics and histogram")
@@ -255,6 +354,21 @@ def main(argv=None):
     p.add_argument("--field", help="attribute to label rows with (default: all attributes)")
     p.add_argument("--csv", action="store_true")
     p.set_defaults(fn=cmd_zonal)
+
+    p = sub.add_parser("project", help="convert coordinates between coordinate systems")
+    p.add_argument("--from", dest="src", default="4326", help="default: 4326 (longitude, latitude)")
+    p.add_argument("--to", required=True)
+    p.add_argument("coords", nargs="*", help="X Y pairs; with none, read them from standard input")
+    p.set_defaults(fn=cmd_project)
+
+    p = sub.add_parser("reproject", help="move a shapefile (or a raster's footprint) to another coordinate system")
+    p.add_argument("input")
+    p.add_argument("output", nargs="?")
+    p.add_argument("--to", required=True)
+    p.add_argument("--from", dest="src", help="override the system read from the file")
+    p.add_argument("--detail", type=int, default=100,
+                   help="cut line and polygon edges into pieces of 1/DETAIL of the layer's width first (default 100)")
+    p.set_defaults(fn=cmd_reproject)
 
     args = ap.parse_args(argv)
     try:

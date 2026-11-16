@@ -3,7 +3,7 @@
 The other tests read files made by this repo's own writers, which could share a
 misunderstanding with the readers. These tests use files made by, and values
 computed by, other people's code. They are skipped when the libraries aren't
-installed (`pip install numpy tifffile imagecodecs pyshp`); CI installs them and
+installed (`pip install numpy tifffile imagecodecs pyshp pyproj`); CI installs them and
 sets REQUIRE_REFERENCE=1 so a skip can't hide a missing check.
 """
 

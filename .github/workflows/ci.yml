@@ -58,9 +58,9 @@ jobs:
           python-version: "3.12"
 
       - name: Install the reference libraries used for cross-checking
-        run: pip install numpy tifffile imagecodecs pyshp
+        run: pip install numpy tifffile imagecodecs pyshp pyproj
 
-      - name: GIS reader tests (including cross-checks against tifffile and pyshp)
+      - name: GIS tests (including cross-checks against tifffile, pyshp and PROJ)
         run: python3 -m unittest discover -s gis/tests
         env:
           REQUIRE_REFERENCE: "1"
