@@ -55,7 +55,7 @@ $ python3 gis.py preview examples/dem.tif --width 60
 ## How it was checked
 
 ```
-python3 -m unittest discover -s tests       # 77 tests
+python3 -m unittest discover -s tests       # 78 tests
 ```
 
 - **Hand-computed answers.** Tiny grids where the zonal result can be worked out on paper, and the sample data, whose cell counts follow from the rectangle sizes (1500 = 50 x 30 cells, the lake's no-data overlap = 10 x 12 cells, and so on).

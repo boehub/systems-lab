@@ -25,6 +25,18 @@ static uint16_t u16(const PcapReader *r, const uint8_t *p) {
     return r->swap ? sw16(v) : v;
 }
 
+// fread on the capture, first handing back any bytes pcap_open read ahead (so a
+// pcapng stream coming from a pipe never needs to be rewound).
+static size_t rfread(PcapReader *r, void *dst, size_t n) {
+    size_t from_pre = 0;
+    if (r->npre) {
+        from_pre = n < (size_t)r->npre ? n : (size_t)r->npre;
+        memcpy(dst, r->pre + (4 - r->npre), from_pre);
+        r->npre -= (int)from_pre;
+    }
+    return from_pre + fread((uint8_t *)dst + from_pre, 1, n - from_pre, r->f);
+}
+
 static int ensure(PcapReader *r, size_t n) {
     if (n > r->cap) {
         uint8_t *b = realloc(r->buf, n);
@@ -37,7 +49,7 @@ static int ensure(PcapReader *r, size_t n) {
 
 int pcap_open(PcapReader *r, const char *path, char *err, size_t errsz) {
     memset(r, 0, sizeof *r);
-    r->f = fopen(path, "rb");
+    r->f = !strcmp(path, "-") ? stdin : fopen(path, "rb");
     if (!r->f) {
         snprintf(err, errsz, "%s: cannot open", path);
         return -1;
@@ -45,7 +57,7 @@ int pcap_open(PcapReader *r, const char *path, char *err, size_t errsz) {
     uint8_t h[24];
     size_t got = fread(h, 1, 4, r->f);
     if (got < 4) {
-        fail(err, errsz, "not a capture file: too short");
+        snprintf(err, errsz, "%s: not a capture file: too short", path);
         goto bad;
     }
     uint32_t magic;
@@ -57,14 +69,15 @@ int pcap_open(PcapReader *r, const char *path, char *err, size_t errsz) {
         r->nano = magic == 0x4D3CB2A1u;
     } else if (magic == 0x0A0D0D0Au) {
         r->ng = 1;
-        rewind(r->f);
+        memcpy(r->pre, h, 4);
+        r->npre = 4;
         return 0;  // the section header is read by pcap_next
     } else {
-        fail(err, errsz, "not a capture file (unrecognised magic number)");
+        snprintf(err, errsz, "%s: not a capture file (unrecognised magic number)", path);
         goto bad;
     }
     if (fread(h + 4, 1, 20, r->f) != 20) {
-        fail(err, errsz, "capture header is cut off");
+        snprintf(err, errsz, "%s: capture header is cut off", path);
         goto bad;
     }
     r->linktype = (int)u32(r, h + 20);
@@ -76,12 +89,12 @@ bad:
 }
 
 static int read_exact(PcapReader *r, uint8_t *dst, size_t n) {
-    return fread(dst, 1, n, r->f) == n ? 0 : -1;
+    return rfread(r, dst, n) == n ? 0 : -1;
 }
 
 static int next_classic(PcapReader *r, PcapRecord *rec, char *err, size_t errsz) {
     uint8_t h[16];
-    size_t got = fread(h, 1, 16, r->f);
+    size_t got = rfread(r, h, 16);
     if (got == 0) return 0;
     if (got < 16) {
         fail(err, errsz, "file ends in the middle of a packet header");
@@ -114,7 +127,7 @@ static int next_classic(PcapReader *r, PcapRecord *rec, char *err, size_t errsz)
 static int next_ng(PcapReader *r, PcapRecord *rec, char *err, size_t errsz) {
     for (;;) {
         uint8_t h[8];
-        size_t got = fread(h, 1, 8, r->f);
+        size_t got = rfread(r, h, 8);
         if (got == 0) return 0;
         if (got < 8) {
             fail(err, errsz, "file ends in the middle of a block header");
@@ -240,7 +253,7 @@ int pcap_next(PcapReader *r, PcapRecord *rec, char *err, size_t errsz) {
 }
 
 void pcap_close(PcapReader *r) {
-    if (r->f) fclose(r->f);
+    if (r->f && r->f != stdin) fclose(r->f);
     free(r->buf);
     memset(r, 0, sizeof *r);
 }

@@ -35,6 +35,8 @@ typedef struct {
     int niface;
     uint8_t *buf;
     size_t cap;
+    uint8_t pre[4];  // bytes read ahead by pcap_open and not yet consumed
+    int npre;
 } PcapReader;
 
 // 0 on success; -1 with a message in `err`.

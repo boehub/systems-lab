@@ -19,6 +19,7 @@ static const char *lookup(const char *name, void *ctx) {
     if (!strcmp(name, "HOME")) return "/home/me";
     if (!strcmp(name, "?")) return "3";
     if (!strcmp(name, "SP")) return "a b";
+    if (!strcmp(name, "STAR")) return "*";
     return NULL;
 }
 
@@ -39,6 +40,15 @@ static int expands_to(const char *raw, const char *want) {
     char *got = expand_word(raw, lookup, NULL);
     int ok = strcmp(got, want) == 0;
     if (!ok) printf("  expand(%s) = [%s], wanted [%s]\n", raw, got, want);
+    free(got);
+    return ok;
+}
+
+static int pattern_is(const char *raw, const char *want, int want_glob) {
+    int g;
+    char *got = expand_pattern(raw, lookup, NULL, &g);
+    int ok = strcmp(got, want) == 0 && g == want_glob;
+    if (!ok) printf("  pattern(%s) = [%s] glob=%d, wanted [%s] glob=%d\n", raw, got, g, want, want_glob);
     free(got);
     return ok;
 }
@@ -129,6 +139,16 @@ int main(void) {
     CHECK(expands_to("a~b", "a~b"));
     CHECK(expands_to("'~'", "~"));
     CHECK(expands_to("a'b c'd\"e f\"", "ab cde f"));  // quotes join into one word
+
+    CHECK(pattern_is("*.c", "*.c", 1));
+    CHECK(pattern_is("src/?.[ch]", "src/?.[ch]", 1));
+    CHECK(pattern_is("plain", "plain", 0));
+    CHECK(pattern_is("'*.c'", "\\*.c", 0));              // quoted: literal
+    CHECK(pattern_is("\"a*\"", "a\\*", 0));
+    CHECK(pattern_is("\\*", "\\*", 0));                 // backslash-escaped
+    CHECK(pattern_is("\"x y\"*", "x y*", 1));            // quoted part plus a live *
+    CHECK(pattern_is("$STAR", "\\*", 0));                // a variable's value is never a pattern
+    CHECK(pattern_is("a\\b", "ab", 0));
 
     printf("%d checks, %d failed\n", checks, failed);
     return failed ? 1 : 0;

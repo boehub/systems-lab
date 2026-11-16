@@ -274,47 +274,78 @@ static size_t dollar(Buf *b, const char *raw, size_t i, LookupFn lookup, void *c
     return j;
 }
 
-char *expand_word(const char *raw, LookupFn lookup, void *ctx) {
+// Append text so a later glob() sees it literally: backslash-escape pattern characters.
+static void put_lit(Buf *b, const char *t, size_t n, int glob_mode) {
+    for (size_t k = 0; k < n; ++k) {
+        if (glob_mode && strchr("*?[]\\", t[k])) put(b, "\\", 1);
+        put(b, t + k, 1);
+    }
+}
+
+// Escape the pattern characters in b->p from offset `from` (used for $VARIABLE values).
+static void escape_from(Buf *b, size_t from) {
+    char *tail = strdup(b->p + from);
+    b->n = from;
+    b->p[from] = '\0';
+    put_lit(b, tail, strlen(tail), 1);
+    free(tail);
+}
+
+static char *expand_impl(const char *raw, LookupFn lookup, void *ctx, int glob_mode, int *has_glob) {
     Buf b = {NULL, 0, 0};
     put(&b, "", 0);
     size_t i = 0;
     if (raw[0] == '~' && (raw[1] == '\0' || raw[1] == '/')) {
         const char *home = lookup("HOME", ctx);
         if (home) {
-            put(&b, home, strlen(home));
+            put_lit(&b, home, strlen(home), glob_mode);
             i = 1;
         }
     }
     while (raw[i]) {
         char c = raw[i];
         if (c == '\\') {
-            if (raw[i + 1]) { put(&b, raw + i + 1, 1); i += 2; }
+            if (raw[i + 1]) { put_lit(&b, raw + i + 1, 1, glob_mode); i += 2; }
             else { put(&b, "\\", 1); i++; }
         } else if (c == '\'') {
             const char *e = strchr(raw + i + 1, '\'');
             if (!e) { put(&b, raw + i, 1); i++; continue; }  // lexer prevents this
-            put(&b, raw + i + 1, (size_t)(e - raw) - i - 1);
+            put_lit(&b, raw + i + 1, (size_t)(e - raw) - i - 1, glob_mode);
             i = (size_t)(e - raw) + 1;
         } else if (c == '"') {
             i++;
             while (raw[i] && raw[i] != '"') {
                 if (raw[i] == '\\' && strchr("\"\\$`", raw[i + 1]) && raw[i + 1]) {
-                    put(&b, raw + i + 1, 1);
+                    put_lit(&b, raw + i + 1, 1, glob_mode);
                     i += 2;
                 } else if (raw[i] == '$') {
+                    size_t from = b.n;
                     i = dollar(&b, raw, i, lookup, ctx);
+                    if (glob_mode) escape_from(&b, from);
                 } else {
-                    put(&b, raw + i, 1);
+                    put_lit(&b, raw + i, 1, glob_mode);
                     i++;
                 }
             }
             if (raw[i]) i++;
         } else if (c == '$') {
+            size_t from = b.n;
             i = dollar(&b, raw, i, lookup, ctx);
+            if (glob_mode) escape_from(&b, from);
         } else {
+            if (glob_mode && strchr("*?[", c) && has_glob) *has_glob = 1;
             put(&b, raw + i, 1);
             i++;
         }
     }
     return b.p;
+}
+
+char *expand_word(const char *raw, LookupFn lookup, void *ctx) {
+    return expand_impl(raw, lookup, ctx, 0, NULL);
+}
+
+char *expand_pattern(const char *raw, LookupFn lookup, void *ctx, int *has_glob) {
+    *has_glob = 0;
+    return expand_impl(raw, lookup, ctx, 1, has_glob);
 }

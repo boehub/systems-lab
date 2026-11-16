@@ -46,6 +46,19 @@ def expect(name, script, out=None, status=0, err_has=None, **kw):
 
 # ---- part 1: command lines ----------------------------------------------------
 
+_g = tempfile.mkdtemp()
+for _n in ("a.c", "b.c", "c.h", "we ird.c", ".hidden.c"):
+    open(os.path.join(_g, _n), "w").close()
+expect("glob expands, sorted", "echo *.c", "a.c b.c we ird.c\n", cwd=_g)
+expect("glob skips dotfiles", "echo *", "a.c b.c c.h we ird.c\n", cwd=_g)
+expect("glob with ? and []", "echo ?.[ch]", "a.c b.c c.h\n", cwd=_g)
+expect("glob keeps names with spaces whole", "ls *ird.c | wc -l; for_each=1", "1\n", cwd=_g)
+expect("quoted * is literal", "echo '*.c' \"*.c\" \\*.c", "*.c *.c *.c\n", cwd=_g)
+expect("no match leaves the word", "echo *.zz", "*.zz\n", cwd=_g)
+expect("glob in a directory path", "mkdir sub; touch sub/x.txt; echo s*/*.txt", "sub/x.txt\n", cwd=_g)
+expect("$VAR holding * is not a pattern", "x='*.c'; echo $x", "*.c\n", cwd=_g)
+expect("glob not applied to redirect names", "echo hi > *.out; ls", "*.out\na.c\nb.c\nc.h\nsub\nwe ird.c\n", cwd=_g)
+
 expect("echo", "echo hello world", "hello world\n")
 expect("echo -n", "echo -n a; echo b", "ab\n")
 expect("quotes keep spaces", "echo 'a   b' \"c   d\"", "a   b c   d\n")

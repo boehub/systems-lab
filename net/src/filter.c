@@ -66,8 +66,14 @@ static int parse_or(Parser *p);
 static int parse_number(Parser *p, const char *t, long max, long *out) {
     char *end;
     long v = strtol(t, &end, 10);
-    if (!*t || *end || v < 0 || v > max) {
+    if (!*t || *end || v < 0) {
         fail(p, "expected a number, got", t);
+        return 0;
+    }
+    if (v > max) {
+        char what[80];
+        snprintf(what, sizeof what, "number out of range (the most allowed here is %ld):", max);
+        fail(p, what, t);
         return 0;
     }
     *out = v;

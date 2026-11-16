@@ -25,9 +25,10 @@ make          # builds ./msh
 
 ## How it is put together
 
-- `src/parse.c`: **lexer** (text to tokens, quote-aware), **parser** (tokens to a list of pipelines of commands), and **expansion** (a raw word to the text the program gets). It never runs anything, so it is tested on its own (`tests/test_parse.c`, 57 checks).
+- `src/parse.c`: **lexer** (text to tokens, quote-aware), **parser** (tokens to a list of pipelines of commands), and **expansion** (a raw word to the text the program gets). It never runs anything, so it is tested on its own (`tests/test_parse.c`, 66 checks).
 - `src/msh.c`: **execution.** A pipeline is a chain of `fork`s joined by `pipe`s; each child sets up its redirections with `dup2` and calls `execvp`. A lone built-in runs inside the shell itself (otherwise `cd` would only change the directory of a child that immediately exits), with the standard streams saved and restored around it.
 - **Job control** follows the textbook design: every pipeline gets its own process group, the shell hands the terminal to the foreground group with `tcsetpgrp` and takes it back afterwards, and waits with `WUNTRACED` so a Ctrl-Z shows up as a stop rather than a hang. The shell itself ignores `SIGINT`, `SIGTSTP` and the terminal-access signals so that only the job receives them. Children put those back to the defaults before `exec`.
+- **Globbing** (`*`, `?`, `[...]`) uses `glob(3)`. The parser marks which pattern characters were typed bare and which came from quotes, backslashes or `$VARIABLES`, and escapes the latter so only typed wildcards match. A pattern that matches nothing is left as typed, as in bash. Redirection targets are not globbed.
 - Variables are expanded *when a command runs*, not when the line is read, so `false; echo $?` sees the status of `false`.
 
 ## Tests
@@ -37,13 +38,13 @@ make test       # parser unit tests, then the real shell end to end
 make sanitize   # the same, built with AddressSanitizer + UBSan
 ```
 
-`tests/test_shell.py` runs 70 checks: command lines compared with expected output and exit status (pipes, redirects, quoting, variables, errors, a 20,000-line pipe, background jobs), then a second part that runs the shell on a **pseudo-terminal** and types Ctrl-C, Ctrl-Z, `bg`, `fg` and Ctrl-D the way a person would. The sanitizer run found a real memory leak in the parser's error path while this was being built.
+`tests/test_shell.py` runs 79 checks: command lines compared with expected output and exit status (pipes, redirects, quoting, variables, errors, a 20,000-line pipe, background jobs), then a second part that runs the shell on a **pseudo-terminal** and types Ctrl-C, Ctrl-Z, `bg`, `fg` and Ctrl-D the way a person would. The sanitizer run found a real memory leak in the parser's error path while this was being built.
 
 ## What it deliberately leaves out
 
 This is a learning project, not a bash replacement.
 
-- No globbing (`*.c`), no word splitting (a variable holding `a b` is one argument), no `$(...)` or backticks, no here-documents, no subshells `( )`, no `if` / `for` / functions, no aliases.
+- No word splitting (a variable holding `a b` is one argument), no `$(...)` or backticks, no here-documents, no subshells `( )`, no `if` / `for` / functions, no aliases.
 - No line editing or history: the interactive prompt reads whole lines with plain `getline`.
 - A script is run one line at a time, so a command cannot span lines.
 - `a && b &` puts only `b` in the background (bash backgrounds the whole list).

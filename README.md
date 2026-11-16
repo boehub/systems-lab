@@ -21,7 +21,7 @@ A collection of systems-level projects built from scratch: CPU emulators, compil
 | [Assembler / Compiler](compiler/) | Python assembler for CHIP-8, plus Nibble, a small language (variables, loops, `if`, printing numbers) that compiles to it | Working: tested end to end against the emulator, including on random programs |
 | [Firmware](firmware/) | The emulator on a Raspberry Pi Pico with an OLED, keypad and buzzer: portable run loop, a program menu, hardware interface, Pico build | Builds for the Pico (also in CI); tests cover everything but the pins; not yet run on a physical board |
 | [Shell (`msh`)](shell/) | A Unix shell in C: pipes, redirection, `&&` / `||`, quoting, variables, and job control (Ctrl-C, Ctrl-Z, `fg`, `bg`) | Working: parser unit tests, end-to-end tests including a pseudo-terminal, sanitizer runs |
-| [GIS reader](gis/) | GeoTIFF and shapefile readers written byte by byte in pure Python (LZW decoder, tiles, dBase attributes), with point-in-polygon and zonal statistics | Working: 77 tests, cross-checked against `tifffile` and `pyshp`, fuzzed with corrupt files |
+| [GIS reader](gis/) | GeoTIFF and shapefile readers written byte by byte in pure Python (LZW decoder, tiles, dBase attributes), with point-in-polygon and zonal statistics | Working: 78 tests, cross-checked against `tifffile` and `pyshp`, fuzzed with corrupt files |
 | [Packet analyzer (`pktscope`)](net/) | Reads pcap and pcapng captures (or captures live on Linux) and decodes Ethernet, VLAN, ARP, IPv4/IPv6, TCP, UDP, ICMP, DNS and HTTP, with a tcpdump-style filter language, checksum checks and conversation summaries | Working: 930+ unit checks, cross-checked against scapy on thousands of random packets, fuzzed, sanitizer runs |
 
 More coming as the lab grows.

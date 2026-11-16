@@ -206,10 +206,73 @@ class TestFormats(Base):
         self.assertIn("link layer not decoded", out[0])
 
 
+class TestWriteAndStdin(Base):
+    def test_write_filtered_copy(self):
+        self.conversation()
+        out = os.path.join(self.tmp.name, "dns.pcap")
+        r = run(self.cap, "-f", "dns", "-w", out, "-q")
+        self.assertEqual(r.stdout, "")
+        again = run(out).stdout.splitlines()
+        self.assertEqual(again, run(self.cap, "-f", "dns").stdout.splitlines())
+        self.assertEqual(len(again), 2)
+
+    def test_write_without_quiet_also_prints(self):
+        self.conversation()
+        out = os.path.join(self.tmp.name, "all.pcap")
+        r = run(self.cap, "-w", out)
+        self.assertEqual(r.stdout, run(out).stdout)
+
+    def test_convert_pcapng_to_pcap(self):
+        names = ("tcp_syn", "http_get", "dns_query")
+        ng = os.path.join(self.tmp.name, "t.pcapng")
+        write_pcapng(ng, [(T0 + i, V[n]) for i, n in enumerate(names)])
+        out = os.path.join(self.tmp.name, "c.pcap")
+        run(ng, "-w", out, "-q")
+        with open(out, "rb") as f:
+            self.assertEqual(f.read(4), bytes.fromhex("d4c3b2a1"))  # classic pcap, little endian
+        self.assertEqual(run(out).stdout, run(ng).stdout)
+
+    def test_write_with_no_match_is_a_valid_empty_capture(self):
+        self.conversation()
+        out = os.path.join(self.tmp.name, "none.pcap")
+        run(self.cap, "-f", "host 9.9.9.9", "-w", out, "-q")
+        self.assertEqual(run(out).stdout, "")
+
+    def test_write_to_unwritable_path(self):
+        self.conversation()
+        r = run(self.cap, "-w", "/nonexistent-dir/x.pcap", expect=1)
+        self.assertIn("cannot write", r.stderr)
+
+    def test_stdin_pcap_and_pcapng(self):
+        self.conversation()
+        want = run(self.cap).stdout
+        with open(self.cap, "rb") as f:
+            r = subprocess.run([BIN, "-"], stdin=f, capture_output=True, text=True, timeout=30)
+        self.assertEqual((r.returncode, r.stdout), (0, want))
+        ng = os.path.join(self.tmp.name, "t.pcapng")
+        write_pcapng(ng, [(T0 + i, V[n]) for i, n in enumerate(("tcp_syn", "http_get"))])
+        with open(ng, "rb") as f:
+            r = subprocess.run([BIN, "-"], stdin=f, capture_output=True, text=True, timeout=30)
+        self.assertEqual(r.stdout, run(ng).stdout)
+        self.assertEqual(len(r.stdout.splitlines()), 2)
+
+    def test_errors_name_the_file(self):
+        junk = os.path.join(self.tmp.name, "junk")
+        open(junk, "w").write("hello world, not a capture")
+        self.assertIn(junk, run(junk, expect=1).stderr)
+        empty = os.path.join(self.tmp.name, "empty")
+        open(empty, "w").close()
+        self.assertIn(empty, run(empty, expect=1).stderr)
+
+    def test_number_out_of_range_message(self):
+        self.conversation()
+        self.assertIn("out of range", run(self.cap, "-f", "port 99999", expect=2).stderr)
+
+
 class TestErrors(Base):
     def test_usage_errors(self):
         self.assertEqual(run(expect=2).returncode, 2)
-        for args in (["--bogus", "x"], ["a.pcap", "b.pcap"], ["-c", "zero", "x"], ["-c", "0", "x"], ["-f"], ["-w", "o", "x"],
+        for args in (["--bogus", "x"], ["a.pcap", "b.pcap"], ["-c", "zero", "x"], ["-c", "0", "x"], ["-f"],
                      ["--live", "lo", "x"]):
             with self.subTest(args=args):
                 r = run(*args, expect=2)

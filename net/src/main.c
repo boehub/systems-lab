@@ -14,7 +14,7 @@
 #include "pcap.h"
 
 static const char *usage =
-    "usage: pktscope [options] FILE.pcap\n"
+    "usage: pktscope [options] FILE.pcap   (FILE of - reads standard input)\n"
     "       pktscope [options] --live IFACE\n"
     "\n"
     "Reads a pcap or pcapng capture and prints one line per packet.\n"
@@ -30,7 +30,8 @@ static const char *usage =
     "      --epoch         show times as seconds since 1970 (default: UTC time of day)\n"
     "      --top N         rows in the summary tables (default 10)\n"
     "      --live IFACE    capture from a network interface (Linux, needs root)\n"
-    "  -w, --write FILE    with --live: also save the packets to a pcap file\n"
+    "  -w, --write FILE    also save the matching packets to a pcap file\n"
+    "  -q, --quiet         with -w: do not print the packets\n"
     "  -h, --help          this help\n"
     "\n"
     "filter words: tcp udp icmp icmp6 ip ip6 arp dns http syn fin rst vlan badcsum\n"
@@ -40,7 +41,7 @@ static const char *usage =
 typedef struct {
     const char *file, *filter, *live, *write;
     long count;
-    int summary, json, hex, epoch, check, top;
+    int summary, json, hex, epoch, check, quiet, top;
 } Options;
 
 static volatile sig_atomic_t stop;
@@ -71,6 +72,8 @@ static int parse_args(int argc, char **argv, Options *o) {
             i++;
         } else if (!strcmp(a, "-s") || !strcmp(a, "--summary")) {
             o->summary = 1;
+        } else if (!strcmp(a, "-q") || !strcmp(a, "--quiet")) {
+            o->quiet = 1;
         } else if (!strcmp(a, "--json")) {
             o->json = 1;
         } else if (!strcmp(a, "-x") || !strcmp(a, "--hex")) {
@@ -107,10 +110,6 @@ static int parse_args(int argc, char **argv, Options *o) {
         fprintf(stderr, "pktscope: give a file or --live, not both\n");
         return -1;
     }
-    if (o->write && !o->live) {
-        fprintf(stderr, "pktscope: -w only makes sense with --live\n");
-        return -1;
-    }
     return 0;
 }
 
@@ -119,6 +118,9 @@ typedef struct {
     Filter *filter;
     Stats *stats;
     long shown;
+    FILE *w;          // -w output, or NULL
+    int w_linktype;   // link type of the output file (-1 until the first packet)
+    long w_skipped;   // packets not written because their link type differs
 } Ctx;
 
 // Handle one captured frame. Returns 1 to keep going, 0 once the count is reached.
@@ -129,7 +131,19 @@ static int handle(Ctx *c, const PcapRecord *rec) {
     p.ts_nsec = rec->ts_nsec;
     p.origlen = rec->origlen;
     if (!filter_match(c->filter, &p)) return 1;
-    if (c->o->summary) {
+    if (c->w) {
+        if (c->w_linktype < 0) {
+            c->w_linktype = rec->linktype;
+            pcap_write_header(c->w, rec->linktype, 65535);
+        }
+        if (rec->linktype == c->w_linktype)
+            pcap_write_record(c->w, rec->ts_sec, rec->ts_nsec / 1000, rec->data, rec->caplen, rec->origlen);
+        else
+            c->w_skipped++;
+    }
+    if (c->o->quiet && !c->o->summary) {
+        /* nothing to print */
+    } else if (c->o->summary) {
         stats_add(c->stats, &p);
     } else if (c->o->json) {
         format_json(&p, stdout);
@@ -173,14 +187,9 @@ static int run_live(Ctx *c) {
         fprintf(stderr, "pktscope: %s\n", err);
         return 1;
     }
-    FILE *w = NULL;
-    if (c->o->write) {
-        w = fopen(c->o->write, "wb");
-        if (!w || pcap_write_header(w, linktype, 65535) != 0) {
-            fprintf(stderr, "pktscope: cannot write %s\n", c->o->write);
-            live_close(fd);
-            return 1;
-        }
+    if (c->w) {  // a live capture knows its link type up front
+        c->w_linktype = linktype;
+        pcap_write_header(c->w, linktype, 65535);
     }
     signal(SIGINT, on_signal);
     signal(SIGTERM, on_signal);
@@ -196,13 +205,11 @@ static int run_live(Ctx *c) {
             break;
         }
         if (r == 0) continue;
-        if (w) pcap_write_record(w, sec, nsec / 1000, buf, len, orig);
         PcapRecord rec = {sec, nsec, len, orig, linktype, buf};
         int more = handle(c, &rec);
         fflush(stdout);
         if (!more) break;
     }
-    if (w) fclose(w);
     live_close(fd);
     return status;
 }
@@ -216,11 +223,27 @@ int main(int argc, char **argv) {
         fprintf(stderr, "pktscope: filter: %s\n", err);
         return 2;
     }
-    Ctx c = {&o, f, o.summary ? stats_new() : NULL, 0};
+    Ctx c = {&o, f, o.summary ? stats_new() : NULL, 0, NULL, -1, 0};
+    if (o.write) {
+        c.w = fopen(o.write, "wb");
+        if (!c.w) {
+            fprintf(stderr, "pktscope: cannot write %s: %s\n", o.write, strerror(errno));
+            return 1;
+        }
+    }
     int status = o.live ? run_live(&c) : run_file(&c);
     if (o.summary) {
         fflush(stdout);
         stats_print(c.stats, stdout, o.top);
+    }
+    if (c.w) {
+        if (c.w_linktype < 0) pcap_write_header(c.w, LT_ETHERNET, 65535);  // nothing matched: still a valid file
+        if (fclose(c.w) != 0) {
+            fprintf(stderr, "pktscope: error writing %s\n", o.write);
+            status = status ? status : 1;
+        }
+        if (c.w_skipped)
+            fprintf(stderr, "pktscope: %ld packet(s) not written: link type differs from the first packet's\n", c.w_skipped);
     }
     stats_free(c.stats);
     filter_free(f);

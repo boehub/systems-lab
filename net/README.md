@@ -20,7 +20,7 @@ $ ./pktscope examples/demo.pcap
 ## Usage
 
 ```
-pktscope [options] FILE
+pktscope [options] FILE          (FILE of - reads standard input)
 pktscope --live IFACE [options]
 
   -f EXPR       only show packets matching a filter
@@ -31,7 +31,8 @@ pktscope --live IFACE [options]
   --check       verify checksums and flag the bad ones
   --epoch       print timestamps as seconds since 1970
   --top N       conversations to list in the summary (default 10)
-  -w FILE       write the packets that matched to a new pcap file
+  -w FILE       also save the matching packets to a pcap file (this converts pcapng to pcap)
+  -q, --quiet   with -w: don't print the packets
 ```
 
 ### Summary
@@ -60,6 +61,13 @@ Busiest conversations (3 in total):
 ```
 
 Words: `tcp udp icmp icmp6 ip ip6 arp dns http syn fin rst vlan badcsum`. Forms: `host`, `net`, `port` (each optionally prefixed by `src` or `dst`), `greater N`, `less N`. Combine with `and`/`or`/`not` (or `&&`, `||`, `!`) and parentheses.
+
+### Saving and piping
+
+```
+./pktscope big.pcapng -f 'host 192.0.2.10 and port 53' -w dns.pcap -q   # cut out a piece
+zcat capture.pcap.gz | ./pktscope - -s                                      # read from a pipe
+```
 
 ### Live capture
 

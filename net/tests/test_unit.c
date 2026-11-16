@@ -400,10 +400,10 @@ static void test_filter(void) {
     CHECK(compile_fails("tcp)", "unexpected"));
     CHECK(compile_fails("port", "expected a port"));
     CHECK(compile_fails("port abc", "expected a number"));
-    CHECK(compile_fails("port 70000", "expected a number"));
+    CHECK(compile_fails("port 70000", "out of range"));
     CHECK(compile_fails("host 300.1.1.1", "not an IP address"));
     CHECK(compile_fails("host 10.0.0.1/8", "single address"));
-    CHECK(compile_fails("net 10.0.0.0/40", "expected a number"));
+    CHECK(compile_fails("net 10.0.0.0/40", "out of range"));
     CHECK(compile_fails("src", "expected host"));
     CHECK(compile_fails("src tcp", "unknown filter word"));
     CHECK(compile_fails("bogus", "unknown filter word 'bogus'"));

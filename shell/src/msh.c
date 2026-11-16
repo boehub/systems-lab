@@ -8,6 +8,7 @@
 // job control (Ctrl-C, Ctrl-Z, jobs, fg, bg). See README.md for what is left out.
 
 #include <errno.h>
+#include <glob.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
@@ -331,7 +332,23 @@ typedef struct {
 
 static void prepare(const Command *c, Prepared *p) {
     p->argv = calloc((size_t)c->nwords + 1, sizeof *p->argv);
-    for (int i = 0; i < c->nwords; ++i) p->argv[i] = expand(c->words[i]);
+    int n = 0, cap = c->nwords + 1;
+    for (int i = 0; i < c->nwords; ++i) {
+        int has_glob;
+        char *pat = expand_pattern(c->words[i], lookup_var, NULL, &has_glob);
+        glob_t g;
+        if (has_glob && glob(pat, 0, NULL, &g) == 0) {
+            cap += (int)g.gl_pathc;
+            p->argv = realloc(p->argv, (size_t)cap * sizeof *p->argv);
+            for (size_t k = 0; k < g.gl_pathc; ++k) p->argv[n++] = strdup(g.gl_pathv[k]);
+            globfree(&g);
+        } else {
+            if (has_glob) globfree(&g);
+            p->argv[n++] = expand(c->words[i]);  // no match: the word stays as typed
+        }
+        free(pat);
+    }
+    p->argv[n] = NULL;
     p->nredirs = c->nredirs;
     p->redirs = calloc((size_t)c->nredirs + 1, sizeof *p->redirs);
     for (int i = 0; i < c->nredirs; ++i) {

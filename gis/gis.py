@@ -192,6 +192,8 @@ def cmd_preview(a):
 def cmd_zonal(a):
     t = open_geotiff(a.raster)
     s = open_shapefile(a.polygons)
+    if s.kind != POLYGON:
+        raise GeoError(f"{a.polygons} holds {TYPE_NAMES.get(s.kind, 'unknown')} features; zonal statistics needs polygons")
     rows, warnings = zonal_stats(t, s, a.band - 1)
     for w in warnings:
         print(f"warning: {w}", file=sys.stderr)

@@ -55,4 +55,10 @@ typedef const char *(*LookupFn)(const char *name, void *ctx);
 // no word splitting or globbing). Caller frees.
 char *expand_word(const char *raw, LookupFn lookup, void *ctx);
 
+// Like expand_word, but for a command argument that may contain wildcards: quoted
+// or escaped pattern characters (and anything from a $VARIABLE) come back
+// backslash-escaped, and *has_glob says whether an unquoted * ? [ was seen.
+// Pass the result to glob(3). Caller frees.
+char *expand_pattern(const char *raw, LookupFn lookup, void *ctx, int *has_glob);
+
 #endif

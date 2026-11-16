@@ -218,6 +218,11 @@ class TestCli(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("no field 'NOPE'", err)
 
+    def test_zonal_rejects_non_polygons(self):
+        _, err, code = run("zonal", DEM, os.path.join(EX, "places.shp"))
+        self.assertEqual(code, 1)
+        self.assertIn("needs polygons", err)
+
     def test_errors_are_one_line_and_exit_1(self):
         for args in (("info", "missing.tif"), ("info", "notes.txt"), ("zonal", REGIONS, DEM)):
             out, err, code = run(*args)
