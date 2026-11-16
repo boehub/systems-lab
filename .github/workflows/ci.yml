@@ -37,6 +37,17 @@ jobs:
       - name: Firmware menu builds on the desktop
         run: make -C firmware menu
 
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell tests (parser, then the real shell, including job control on a pseudo-terminal)
+        run: make -C shell test
+
+      - name: Shell tests again with the address and undefined-behavior sanitizers
+        run: make -C shell sanitize
+
   pico:
     runs-on: ubuntu-latest
     steps:

@@ -21,6 +21,8 @@ A collection of systems-level projects built from scratch: CPU emulators, compil
 | [Assembler / Compiler](compiler/) | Python assembler for CHIP-8, plus Nibble, a small language (variables, loops, `if`, printing numbers) that compiles to it | Working: tested end to end against the emulator, including on random programs |
 | [Firmware](firmware/) | The emulator on a Raspberry Pi Pico with an OLED, keypad and buzzer: portable run loop, a program menu, hardware interface, Pico build | Builds for the Pico (also in CI); tests cover everything but the pins; not yet run on a physical board |
 
+| [Shell (`msh`)](shell/) | A Unix shell in C: pipes, redirection, `&&` / `||`, quoting, variables, and job control (Ctrl-C, Ctrl-Z, `fg`, `bg`) | Working: parser unit tests, end-to-end tests including a pseudo-terminal, sanitizer runs |
+
 More coming as the lab grows.
 
 ## How the pieces fit
@@ -60,6 +62,10 @@ cpu-emulator/chip8 fib.ch8
 python3 compiler/chip8asm.py compiler/examples/zero.asm -o zero.ch8
 cpu-emulator/chip8 --headless zero.ch8
 
+# Build and test the shell, then try it
+make -C shell test
+shell/msh
+
 # Run the full pipeline through the firmware loop, and see the Pico's program menu
 make -C firmware run
 make -C firmware menu
@@ -72,6 +78,7 @@ systems-lab/
 ├── cpu-emulator/   emulator core (src/), test ROMs (roms/)
 ├── compiler/       assembler (chip8asm.py), Nibble compiler (nibc.py), examples, tests, docs
 ├── firmware/       run loop and program menu (src/), desktop (host/) and Raspberry Pi Pico (pico/) platforms
+├── shell/          Unix shell in C: parser (parse.c), shell and job control (msh.c), tests
 ├── docs/           demo recording, menu picture
 ├── LICENSE         MIT
 └── README.md
