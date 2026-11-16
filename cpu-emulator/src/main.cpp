@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 
+#include <array>
 #include <chrono>
 #include <csignal>
 #include <cstdint>
