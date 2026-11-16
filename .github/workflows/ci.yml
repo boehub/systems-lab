@@ -48,6 +48,23 @@ jobs:
       - name: Shell tests again with the address and undefined-behavior sanitizers
         run: make -C shell sanitize
 
+  gis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the reference libraries used for cross-checking
+        run: pip install numpy tifffile imagecodecs pyshp
+
+      - name: GIS reader tests (including cross-checks against tifffile and pyshp)
+        run: python3 -m unittest discover -s gis/tests
+        env:
+          REQUIRE_REFERENCE: "1"
+
   pico:
     runs-on: ubuntu-latest
     steps:

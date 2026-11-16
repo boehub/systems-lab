@@ -23,6 +23,8 @@ A collection of systems-level projects built from scratch: CPU emulators, compil
 
 | [Shell (`msh`)](shell/) | A Unix shell in C: pipes, redirection, `&&` / `||`, quoting, variables, and job control (Ctrl-C, Ctrl-Z, `fg`, `bg`) | Working: parser unit tests, end-to-end tests including a pseudo-terminal, sanitizer runs |
 
+| [GIS reader](gis/) | GeoTIFF and shapefile readers written byte by byte in pure Python (LZW decoder, tiles, dBase attributes), with point-in-polygon and zonal statistics | Working: 77 tests, cross-checked against `tifffile` and `pyshp`, fuzzed with corrupt files |
+
 More coming as the lab grows.
 
 ## How the pieces fit
@@ -66,6 +68,9 @@ cpu-emulator/chip8 --headless zero.ch8
 make -C shell test
 shell/msh
 
+# Try the GIS reader on the sample data
+python3 gis/gis.py zonal gis/examples/dem.tif gis/examples/regions.shp --field NAME
+
 # Run the full pipeline through the firmware loop, and see the Pico's program menu
 make -C firmware run
 make -C firmware menu
@@ -78,6 +83,7 @@ systems-lab/
 ├── cpu-emulator/   emulator core (src/), test ROMs (roms/)
 ├── compiler/       assembler (chip8asm.py), Nibble compiler (nibc.py), examples, tests, docs
 ├── firmware/       run loop and program menu (src/), desktop (host/) and Raspberry Pi Pico (pico/) platforms
+├── gis/            GeoTIFF + shapefile readers (geo/), command-line tool (gis.py), sample data, tests
 ├── shell/          Unix shell in C: parser (parse.c), shell and job control (msh.c), tests
 ├── docs/           demo recording, menu picture
 ├── LICENSE         MIT
