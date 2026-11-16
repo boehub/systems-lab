@@ -70,6 +70,7 @@ void format_line(const Packet *p, int epoch, int show_csum, char *out, size_t n)
 #define PUT(...) do { int k_ = snprintf(w, left, __VA_ARGS__); if (k_ < 0 || (size_t)k_ >= left) { w += left ? left - 1 : 0; left = left ? 1 : 0; } else { w += k_; left -= (size_t)k_; } } while (0)
 
     char a[64], b[64], tmp[48], tmp2[16];
+    if (p->reasm_frags) PUT("[reassembled from %d fragments] ", p->reasm_frags);
     if (p->ip_version) {
         addr_to_string(&p->src, a, sizeof a);
         addr_to_string(&p->dst, b, sizeof b);
@@ -170,6 +171,7 @@ void format_json(const Packet *p, FILE *f) {
         fprintf(f, ",\"ip\":%d,\"src\":\"%s\",\"dst\":\"%s\",\"proto\":%u,\"ttl\":%u,\"ip_csum\":\"%s\"", p->ip_version, s, buf,
                 p->ip_proto, p->ttl, csum_text(p->ip_csum));
         if (p->fragment) fprintf(f, ",\"frag_offset\":%d", p->frag_offset);
+        if (p->reasm_frags) fprintf(f, ",\"reassembled_from\":%d", p->reasm_frags);
     }
     if (p->l4 == 6 || p->l4 == 17) {
         fprintf(f, ",\"sport\":%u,\"dport\":%u,\"payload\":%u,\"l4_csum\":\"%s\"", p->sport, p->dport, p->payload_len,

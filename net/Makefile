@@ -1,6 +1,6 @@
 CC      ?= gcc
 CFLAGS  ?= -std=gnu11 -Wall -Wextra -O2
-SRC     := src/pcap.c src/decode.c src/filter.c src/format.c src/flows.c src/live.c
+SRC     := src/pcap.c src/decode.c src/filter.c src/format.c src/flows.c src/live.c src/defrag.c src/streams.c
 
 pktscope: $(SRC) src/main.c $(wildcard src/*.h)
 	$(CC) $(CFLAGS) -o $@ src/main.c $(SRC)

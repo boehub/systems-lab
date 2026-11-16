@@ -314,10 +314,19 @@ static int decode_ipv4(const uint8_t *d, size_t n, Packet *p) {
     uint16_t ff = rd16(d + 6);
     p->frag_offset = (ff & 0x1FFF) * 8;
     p->fragment = (ff & 0x2000) || p->frag_offset;
+    p->ip_hdr = d;
+    p->ip_hdr_len = (uint8_t)ihl;
 
     size_t avail = n - ihl, seglen = total - ihl;
     if (seglen > avail) p->truncated = 1;
     if (avail > seglen) avail = seglen;  // drop Ethernet padding past the datagram's end
+    if (p->fragment) {
+        p->frag_more = (ff & 0x2000) != 0;
+        p->frag_id = rd16(d + 4);
+        p->frag_proto = d[9];
+        p->frag_data = d + ihl;
+        p->frag_len = (uint32_t)avail;
+    }
     if (p->frag_offset > 0) return 0;    // no transport header in a later fragment
     decode_l4(p, d + ihl, avail, seglen, !p->fragment);
     return 0;
@@ -347,13 +356,24 @@ static int decode_ipv6(const uint8_t *d, size_t n, Packet *p) {
         size_t hl = next == 44 ? 8 : next == 51 ? ((size_t)d[40 + pos + 1] + 2) * 4 : ((size_t)d[40 + pos + 1] + 1) * 8;
         if (next == 44) {
             p->fragment = 1;
-            p->frag_offset = (rd16(d + 40 + pos + 2) >> 3) * 8;
+            uint16_t fo = rd16(d + 40 + pos + 2);
+            p->frag_offset = (fo >> 3) * 8;
+            p->frag_more = fo & 1;
+            p->frag_id = rd32(d + 40 + pos + 4);
         }
         if (pos + hl > plen) { p->note = "bad IPv6 extension header"; return 0; }
         uint8_t following = d[40 + pos];
         pos += hl;
         next = following;
+        if (p->fragment && !p->frag_data) {  // the rest of the packet is this piece of the datagram
+            p->frag_proto = following;
+            p->frag_data = d + 40 + pos;
+            p->frag_len = (uint32_t)(cap - pos);
+            if (p->frag_offset > 0) break;  // no more headers to read: it is just data
+        }
     }
+    p->ip_hdr = d;
+    p->ip_hdr_len = 40;
     p->ip_proto = next;
     if (p->frag_offset > 0) return 0;
     if (pos > cap) { p->truncated = 1; return 0; }

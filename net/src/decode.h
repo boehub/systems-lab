@@ -63,6 +63,14 @@ typedef struct {
     uint16_t ip_total;  // IPv4 total length / IPv6 payload length + 40
     int fragment;       // 1 when this is a piece of a fragmented datagram
     int frag_offset;    // in bytes
+    int frag_more;      // the "more fragments" flag
+    uint32_t frag_id;   // identifies the datagram the piece belongs to
+    uint8_t frag_proto; // the protocol the reassembled data carries (IPv4: ip_proto)
+    const uint8_t *frag_data;  // this fragment's share of the datagram, inside the captured buffer
+    uint32_t frag_len;
+    const uint8_t *ip_hdr;     // the IP header as captured (IPv4: 20 bytes plus options; IPv6: 40)
+    uint8_t ip_hdr_len;
+    int reasm_frags;    // > 0 on a datagram put back together from this many fragments
     int ip_csum;        // CSUM_*
 
     // Transport

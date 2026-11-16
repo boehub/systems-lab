@@ -11,6 +11,7 @@ typedef struct {
     uint8_t flags[2];            // TCP flags seen in each direction
     int64_t first_s, last_s;
     uint32_t first_ns, last_ns;
+    int next_in_bucket;
 } Flow;
 
 typedef struct {
@@ -21,6 +22,8 @@ typedef struct {
 struct Stats {
     Flow *flows;
     size_t nflows, cap;
+    int *buckets;      // hash table over the flows: index of the first flow in each bucket, or -1
+    size_t nbuckets;
     uint64_t packets, bytes, non_ip, undecoded, truncated, bad_csum;
     uint64_t by_proto[6];  // TCP, UDP, ICMP, ICMPv6, other IP, non-IP
     int64_t first_s, last_s;
@@ -37,6 +40,7 @@ Stats *stats_new(void) { return calloc(1, sizeof(Stats)); }
 void stats_free(Stats *s) {
     if (!s) return;
     free(s->flows);
+    free(s->buckets);
     free(s->dns);
     free(s->http);
     free(s);
@@ -49,12 +53,36 @@ static int cmp_endpoint(const Addr *x, uint16_t px, const Addr *y, uint16_t py) 
     return (int)px - (int)py;
 }
 
+static uint32_t flow_hash(uint8_t proto, const Addr *a, uint16_t pa, const Addr *b, uint16_t pb) {
+    uint32_t h = 2166136261u ^ proto;
+    for (int i = 0; i < 16; ++i) h = (h ^ a->b[i]) * 16777619u;
+    for (int i = 0; i < 16; ++i) h = (h ^ b->b[i]) * 16777619u;
+    h = (h ^ pa) * 16777619u;
+    h = (h ^ pb) * 16777619u;
+    return h ^ (h >> 15);
+}
+
+static void rehash(Stats *s, size_t nbuckets) {
+    free(s->buckets);
+    s->nbuckets = nbuckets;
+    s->buckets = malloc(nbuckets * sizeof *s->buckets);
+    for (size_t i = 0; i < nbuckets; ++i) s->buckets[i] = -1;
+    for (size_t i = 0; i < s->nflows; ++i) {
+        Flow *f = &s->flows[i];
+        size_t b = flow_hash(f->proto, &f->a, f->pa, &f->b, f->pb) % nbuckets;
+        f->next_in_bucket = s->buckets[b];
+        s->buckets[b] = (int)i;
+    }
+}
+
 static Flow *find_flow(Stats *s, const Packet *p, int *dir) {
     int swap = cmp_endpoint(&p->src, p->sport, &p->dst, p->dport) > 0;
     const Addr *a = swap ? &p->dst : &p->src, *b = swap ? &p->src : &p->dst;
     uint16_t pa = swap ? p->dport : p->sport, pb = swap ? p->sport : p->dport;
     *dir = swap;
-    for (size_t i = 0; i < s->nflows; ++i) {
+    if (!s->nbuckets) rehash(s, 1024);
+    size_t bucket = flow_hash(p->ip_proto, a, pa, b, pb) % s->nbuckets;
+    for (int i = s->buckets[bucket]; i >= 0; i = s->flows[i].next_in_bucket) {
         Flow *f = &s->flows[i];
         if (f->proto == p->ip_proto && f->pa == pa && f->pb == pb && f->a.v6 == a->v6 && !memcmp(f->a.b, a->b, 16) &&
             !memcmp(f->b.b, b->b, 16))
@@ -73,6 +101,9 @@ static Flow *find_flow(Stats *s, const Packet *p, int *dir) {
     f->pb = pb;
     f->first_s = p->ts_sec;
     f->first_ns = p->ts_nsec;
+    f->next_in_bucket = s->buckets[bucket];
+    s->buckets[bucket] = (int)(s->nflows - 1);
+    if (s->nflows > s->nbuckets * 2) rehash(s, s->nbuckets * 4);
     return f;
 }
 
@@ -91,6 +122,15 @@ static void count(Counted **arr, size_t *n, const char *text) {
 }
 
 void stats_add(Stats *s, const Packet *p) {
+    if (p->reasm_frags) {  // already counted piece by piece: add only what the whole datagram says
+        if (p->dns.present && p->dns.qdcount && !p->dns.response) {
+            char key[300];
+            snprintf(key, sizeof key, "%s %s", dns_type_name(p->dns.qtype) ? dns_type_name(p->dns.qtype) : "?", p->dns.qname);
+            count(&s->dns, &s->ndns, key);
+        }
+        if (p->http == 1) count(&s->http, &s->nhttp, p->http_line);
+        return;
+    }
     s->packets++;
     s->bytes += p->origlen;
     if (!s->have_time) {

@@ -22,7 +22,7 @@ A collection of systems-level projects built from scratch: CPU emulators, compil
 | [Firmware](firmware/) | The emulator on a Raspberry Pi Pico with an OLED, keypad and buzzer: portable run loop, a program menu, hardware interface, Pico build | Builds for the Pico (also in CI); tests cover everything but the pins; not yet run on a physical board |
 | [Shell (`msh`)](shell/) | A Unix shell in C: pipes, redirection, here-documents, `$(...)`, `if` / `while` / `for` / `case`, functions, `( )` and `{ }`, wildcards, and job control (Ctrl-C, Ctrl-Z, `fg`, `bg`) | Working: parser unit tests with a fuzz run, end-to-end tests including a pseudo-terminal, sanitizer runs |
 | [GIS reader](gis/) | GeoTIFF and shapefile readers written byte by byte in pure Python (LZW decoder, tiles, dBase attributes), with point-in-polygon and zonal statistics | Working: 78 tests, cross-checked against `tifffile` and `pyshp`, fuzzed with corrupt files |
-| [Packet analyzer (`pktscope`)](net/) | Reads pcap and pcapng captures (or captures live on Linux) and decodes Ethernet, VLAN, ARP, IPv4/IPv6, TCP, UDP, ICMP, DNS and HTTP, with a tcpdump-style filter language, checksum checks and conversation summaries | Working: 930+ unit checks, cross-checked against scapy on thousands of random packets, fuzzed, sanitizer runs |
+| [Packet analyzer (`pktscope`)](net/) | Reads pcap and pcapng captures (or captures live on Linux) and decodes Ethernet, VLAN, ARP, IPv4/IPv6, TCP, UDP, ICMP, DNS and HTTP, with a tcpdump-style filter language, checksum checks, conversation summaries, and IP-fragment and TCP-stream reassembly (follow a connection, list the HTTP inside it) | Working: 930+ unit checks, 50+ reassembly tests including random reordering and loss, cross-checked against scapy, fuzzed, sanitizer runs |
 
 More coming as the lab grows.
 
@@ -72,7 +72,7 @@ python3 gis/gis.py zonal gis/examples/dem.tif gis/examples/regions.shp --field N
 
 # Read the sample capture with the packet analyzer
 make -C net pktscope
-net/pktscope net/examples/demo.pcap --summary
+net/pktscope net/examples/messy.pcap --streams
 
 # Run the full pipeline through the firmware loop, and see the Pico's program menu
 make -C firmware run
