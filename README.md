@@ -20,10 +20,9 @@ A collection of systems-level projects built from scratch: CPU emulators, compil
 | [CHIP-8 Emulator](cpu-emulator/) | C++ emulator for the CHIP-8 virtual machine. The core has no I/O, so it ports to microcontrollers | Playable: full CPU, real-time terminal front end with keyboard, checked against community test ROMs |
 | [Assembler / Compiler](compiler/) | Python assembler for CHIP-8, plus Nibble, a small language (variables, loops, `if`, printing numbers) that compiles to it | Working: tested end to end against the emulator, including on random programs |
 | [Firmware](firmware/) | The emulator on a Raspberry Pi Pico with an OLED, keypad and buzzer: portable run loop, a program menu, hardware interface, Pico build | Builds for the Pico (also in CI); tests cover everything but the pins; not yet run on a physical board |
-
 | [Shell (`msh`)](shell/) | A Unix shell in C: pipes, redirection, `&&` / `||`, quoting, variables, and job control (Ctrl-C, Ctrl-Z, `fg`, `bg`) | Working: parser unit tests, end-to-end tests including a pseudo-terminal, sanitizer runs |
-
 | [GIS reader](gis/) | GeoTIFF and shapefile readers written byte by byte in pure Python (LZW decoder, tiles, dBase attributes), with point-in-polygon and zonal statistics | Working: 77 tests, cross-checked against `tifffile` and `pyshp`, fuzzed with corrupt files |
+| [Packet analyzer (`pktscope`)](net/) | Reads pcap and pcapng captures (or captures live on Linux) and decodes Ethernet, VLAN, ARP, IPv4/IPv6, TCP, UDP, ICMP, DNS and HTTP, with a tcpdump-style filter language, checksum checks and conversation summaries | Working: 930+ unit checks, cross-checked against scapy on thousands of random packets, fuzzed, sanitizer runs |
 
 More coming as the lab grows.
 
@@ -71,6 +70,10 @@ shell/msh
 # Try the GIS reader on the sample data
 python3 gis/gis.py zonal gis/examples/dem.tif gis/examples/regions.shp --field NAME
 
+# Read the sample capture with the packet analyzer
+make -C net pktscope
+net/pktscope net/examples/demo.pcap --summary
+
 # Run the full pipeline through the firmware loop, and see the Pico's program menu
 make -C firmware run
 make -C firmware menu
@@ -84,6 +87,7 @@ systems-lab/
 ├── compiler/       assembler (chip8asm.py), Nibble compiler (nibc.py), examples, tests, docs
 ├── firmware/       run loop and program menu (src/), desktop (host/) and Raspberry Pi Pico (pico/) platforms
 ├── gis/            GeoTIFF + shapefile readers (geo/), command-line tool (gis.py), sample data, tests
+├── net/            packet capture analyzer in C (src/), sample capture, tests
 ├── shell/          Unix shell in C: parser (parse.c), shell and job control (msh.c), tests
 ├── docs/           demo recording, menu picture
 ├── LICENSE         MIT

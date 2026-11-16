@@ -65,6 +65,32 @@ jobs:
         env:
           REQUIRE_REFERENCE: "1"
 
+  net:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install scapy (reference for the cross-checks)
+        run: pip install scapy
+
+      - name: Packet analyzer tests (including cross-checks against scapy)
+        run: make -C net test
+        env:
+          REQUIRE_REFERENCE: "1"
+
+      - name: Live capture test (needs root for AF_PACKET)
+        run: sudo -E env "PATH=$PATH" make -C net test
+        env:
+          REQUIRE_REFERENCE: "1"
+          REQUIRE_LIVE: "1"
+
+      - name: Sanitizer run
+        run: make -C net sanitize
+
   pico:
     runs-on: ubuntu-latest
     steps:
